@@ -1,0 +1,12 @@
+.git
+target/
+*.class
+*.log
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Don't copy local env files with secrets into Docker image
+.env
+.env.local

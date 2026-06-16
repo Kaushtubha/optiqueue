@@ -1,0 +1,120 @@
+# ═══════════════════════════════════════════════════════════════
+# application.yml  — OptiQueue Spring Boot configuration
+#
+# WHY YAML over .properties?
+#   Hierarchical nesting reduces repetition. Compare:
+#     spring.datasource.url=...
+#     spring.datasource.username=...
+#   vs the YAML block below. Much cleaner for 50+ properties.
+#
+# WHY environment variables for credentials?
+#   Hard-coding passwords here would expose them in Git.
+#   Docker Compose injects env vars at runtime; the ${VAR:default}
+#   syntax provides a safe local default for development.
+# ═══════════════════════════════════════════════════════════════
+
+spring:
+  application:
+    name: optiqueue
+
+  # ── DATABASE ──────────────────────────────────────────────────
+  datasource:
+    # The hostname "postgres" resolves inside Docker Compose because
+    # Docker's internal DNS maps service names to container IPs.
+    # Locally (outside Docker), we override with localhost via env var.
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/optiqueue}
+    username: ${DB_USER:optiqueue}
+    password: ${DB_PASS:optiqueue}
+    driver-class-name: org.postgresql.Driver
+
+    # HikariCP connection pool settings.
+    # WHY pool? Opening a new JDBC connection is expensive (~50ms).
+    # Pooling reuses open connections so queries are fast.
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000   # 30s before giving up on a connection
+      idle-timeout: 600000        # Close idle connections after 10 min
+
+  # ── JPA / HIBERNATE ───────────────────────────────────────────
+  jpa:
+    # validate: Hibernate checks DB schema matches @Entity classes.
+    # We use Flyway for actual DDL — Hibernate must not touch schema.
+    hibernate:
+      ddl-auto: validate
+    show-sql: false               # Set true during debugging only
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # ── FLYWAY ────────────────────────────────────────────────────
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true     # Allows migration on existing DB
+
+  # ── REDIS ─────────────────────────────────────────────────────
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      # No password for local dev. In prod, set via env var.
+      password: ${REDIS_PASS:}
+      timeout: 2000               # 2s socket timeout
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+# ── ACTUATOR ────────────────────────────────────────────────────
+# /actuator/health is used by Docker Compose healthcheck.
+# Expose only health + info in prod; never expose full actuator publicly.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ── SERVER ──────────────────────────────────────────────────────
+server:
+  port: ${SERVER_PORT:8080}
+
+# ── OPTIQUEUE CUSTOM PROPERTIES ─────────────────────────────────
+# These are read by @ConfigurationProperties beans (Step 5 onwards).
+optiqueue:
+  worker:
+    pool-size: ${WORKER_POOL_SIZE:4}          # Number of worker threads
+    queue-capacity: ${WORKER_QUEUE_CAP:100}   # Max jobs in blocking queue
+  retry:
+    max-attempts: ${RETRY_MAX:5}              # Before moving to DLQ
+    initial-delay-ms: ${RETRY_DELAY_MS:1000}  # First retry delay (doubles each time)
+  heartbeat:
+    interval-ms: ${HEARTBEAT_MS:5000}         # Worker sends heartbeat every 5s
+    ttl-ms: ${HEARTBEAT_TTL_MS:15000}         # If no heartbeat for 15s, worker = dead
+
+scheduler:
+  poll-interval-ms: ${SCHEDULER_POLL_MS:2000} # How often the scheduler checks the DB
+
+retry:
+  scan-interval-ms: ${RETRY_SCAN_MS:5000}       # How often the retry engine polls for due jobs
+  dlq-scan-interval-ms: ${DLQ_SCAN_MS:30000}    # How often the DLQ safety scan runs
+
+failover:
+  scan-interval-ms: ${FAILOVER_SCAN_MS:30000}   # How often the failover detector runs
+
+# ── SECURITY ────────────────────────────────────────────────────
+# Set API_KEYS=your-secret-key in production.
+# Multiple keys: API_KEYS=key1,key2 (for zero-downtime rotation)
+# Disabled in local dev by default.
+security:
+  api-keys: ${API_KEYS:disabled}
+
+logging:
+  level:
+    com.optiqueue: DEBUG
+    org.springframework.data.redis: INFO

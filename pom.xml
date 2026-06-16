@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ─────────────────────────────────────────────────────────────────
+       Spring Boot parent manages ALL dependency versions for us.
+       We inherit its dependency-management BOM so we don't have to
+       specify versions for spring-data-jpa, spring-data-redis, etc.
+       ───────────────────────────────────────────────────────────────── -->
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.2.5</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>com.optiqueue</groupId>
+  <artifactId>optiqueue</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  <name>OptiQueue</name>
+  <description>Distributed Task Scheduling and Job Processing Engine</description>
+
+  <properties>
+    <!-- Java 21: LTS, virtual threads available (we use platform threads for clarity) -->
+    <java.version>21</java.version>
+    <!-- Testcontainers: spin up real Postgres/Redis in unit tests -->
+    <testcontainers.version>1.19.7</testcontainers.version>
+  </properties>
+
+  <dependencies>
+
+    <!-- ── WEB LAYER ─────────────────────────────────────────────── -->
+    <!-- Embedded Tomcat + Spring MVC + Jackson JSON serialization -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <!-- ── PERSISTENCE ───────────────────────────────────────────── -->
+    <!-- Spring Data JPA wraps Hibernate ORM; lets us use @Entity + repositories -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+
+    <!-- PostgreSQL JDBC driver (runtime only — not needed at compile time) -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Flyway: database schema migrations tracked in version-controlled SQL files.
+         Why not just hibernate ddl-auto=update? Because in prod, auto-DDL can
+         silently drop columns. Flyway gives you an auditable migration history. -->
+    <!-- Flyway 9.x (managed by Spring Boot 3.2.x BOM) — PostgreSQL support
+         is built into flyway-core. The flyway-database-postgresql artifact
+         only exists in Flyway 10+, which is NOT managed by Spring Boot 3.2.x. -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+
+    <!-- ── REDIS ─────────────────────────────────────────────────── -->
+    <!-- Spring Data Redis + Lettuce client (async, thread-safe, connection pooling) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+
+    <!-- ── VALIDATION ────────────────────────────────────────────── -->
+    <!-- @Valid, @NotNull, @Size etc. on request DTOs -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <!-- ── OBSERVABILITY ─────────────────────────────────────────── -->
+    <!-- Actuator: /actuator/health, /actuator/metrics — used by Docker healthcheck -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- ── DEV TOOLING ────────────────────────────────────────────── -->
+    <!-- Lombok: @Getter, @Setter, @Builder etc. reduce boilerplate.
+         optional=true means it's not transitive to dependents. -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- ── TESTING ────────────────────────────────────────────────── -->
+    <!-- spring-boot-starter-test brings: JUnit 5, Mockito, AssertJ, MockMvc -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Testcontainers core: manages Docker containers in JUnit tests -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Testcontainers JUnit 5 extension (@Testcontainers, @Container) -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Testcontainers Postgres module (pre-configured Postgres image) -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Spring Boot Maven plugin: packages the app as an executable fat-jar.
+           The repackage goal rewrites the jar so `java -jar optiqueue.jar` works. -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <!-- Tell the plugin to exclude Lombok from the fat-jar (compile-time only) -->
+          <excludes>
+            <exclude>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+            </exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

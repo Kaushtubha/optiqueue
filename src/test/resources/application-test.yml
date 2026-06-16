@@ -1,0 +1,23 @@
+# Test profile: overrides main application.yml for unit/integration tests.
+# Spring Boot loads this when @SpringBootTest or the test profile is active.
+# Testcontainers will override datasource URL programmatically (Step 11),
+# so these values are placeholders — Spring needs valid-looking config to start.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/optiqueue_test
+    username: optiqueue
+    password: optiqueue
+  jpa:
+    hibernate:
+      ddl-auto: create-drop    # In tests ONLY: create schema fresh, drop on exit
+  flyway:
+    enabled: false             # Testcontainers will handle schema via ddl-auto
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+logging:
+  level:
+    com.optiqueue: DEBUG

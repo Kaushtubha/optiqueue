@@ -1,0 +1,435 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+% --- Color Palette ---
+\definecolor{primaryblue}{RGB}{14, 116, 144}
+\definecolor{darkslate}{RGB}{15, 23, 42}
+\definecolor{accentindigo}{RGB}{99, 102, 241}
+\definecolor{emeraldgreen}{RGB}{16, 185, 129}
+\definecolor{amberalert}{RGB}{217, 119, 6}
+\definecolor{crimsonred}{RGB}{225, 29, 72}
+\definecolor{codebg}{RGB}{248, 250, 252}
+\definecolor{codeborder}{RGB}{226, 232, 240}
+
+% --- Hyperlink Setup ---
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    urlcolor=accentindigo,
+    citecolor=primaryblue
+}
+
+% --- Header and Footer ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{OptiQueue} --- Distributed Task Engine Technical Handbook}
+\fancyhead[R]{\small\thepage}
+\fancyfoot[C]{\footnotesize Engineering Interview \& Distributed Systems Architecture Guide}
+\renewcommand{\headrulewidth}{0.5pt}
+
+% --- Code Listing Styling ---
+\lstset{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{gray},
+    keywordstyle=\color{primaryblue}\bfseries,
+    stringstyle=\color{emeraldgreen},
+    frame=single,
+    rulecolor=\color{codeborder},
+    tabsize=2,
+    showstringspaces=false
+}
+
+% --- Custom Callout Boxes ---
+\newtcolorbox{conceptbox}[1]{
+    colback=white,
+    colframe=primaryblue,
+    coltitle=white,
+    fonttitle=\bfseries,
+    title={Concept Definition: #1},
+    boxrule=1pt,
+    arc=4pt,
+    left=10pt, right=10pt, top=8pt, bottom=8pt,
+    before skip=10pt, after skip=10pt
+}
+
+\newtcolorbox{interviewbox}[1]{
+    colback=white,
+    colframe=accentindigo,
+    coltitle=white,
+    fonttitle=\bfseries,
+    title={Interview Question: #1},
+    boxrule=1.2pt,
+    arc=4pt,
+    left=10pt, right=10pt, top=8pt, bottom=8pt,
+    before skip=12pt, after skip=12pt
+}
+
+\newtcolorbox{architecturebox}[1]{
+    colback=codebg,
+    colframe=darkslate,
+    coltitle=white,
+    fonttitle=\bfseries,
+    title={Architecture Blueprint: #1},
+    boxrule=1pt,
+    arc=4pt,
+    left=10pt, right=10pt, top=8pt, bottom=8pt,
+    before skip=10pt, after skip=10pt
+}
+
+% --- Title ---
+\title{
+    \vspace{-1.5cm}
+    \textbf{\huge OptiQueue: Distributed Task Scheduling \& Execution Engine}\\[0.3cm]
+    \large Comprehensive System Architecture, First-Principles Technical Dictionary,\\
+    and Distributed Systems Interview Masterclass
+}
+\author{\textbf{Kaushtubha} \\ \small Lead Systems Architect \& Core Maintainer \\ \small Live Deployment: \url{https://optiqueue.onrender.com}}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% =========================================================================
+\section{Executive Overview \& System Architecture}
+% =========================================================================
+
+\subsection{What is OptiQueue?}
+\textbf{OptiQueue} is a resilient, horizontally scalable, high-throughput distributed task scheduling and execution engine built with Java 17, Spring Boot, Redis, and PostgreSQL. It guarantees fault-tolerant, prioritized, at-least-once task execution across distributed compute nodes, with automated failover detection, dead-letter recovery, rate-limiting, and distributed mutual exclusion.
+
+\begin{architecturebox}{High-Level End-to-End System Topology}
+\begin{enumerate}
+    \item \textbf{Ingestion Tier}: Spring Boot REST Controllers intercept incoming job submissions, validate authorization via \texttt{X-API-Key}, evaluate distributed sliding-window rate limits, enforce idempotency keys, and persist initial records in PostgreSQL.
+    \item \textbf{Coordination Tier}: An in-memory concurrent Min-Heap priority queue sorted by \textit{Earliest-Deadline-First} (EDF) paired with Redis distributed locking primitives provides low-latency job assignment while preventing double-processing.
+    \item \textbf{Execution Tier}: A bounded, dynamically managed worker pool pulls jobs across consumer threads, executes registered domain handlers (\texttt{EMAIL\_SEND}, \texttt{WEBHOOK\_DISPATCH}, \texttt{REPORT\_GEN}), and captures execution telemetry.
+    \item \textbf{Supervisory Tier}: An asynchronous \texttt{FailoverDetector} and \texttt{HeartbeatService} monitor worker node liveness; in the event of worker crash or network partition, orphaned tasks are automatically reclaimed and re-queued.
+    \item \textbf{Durability \& Telemetry Tier}: Neon Serverless PostgreSQL stores write-ahead transactional logs, execution outputs, and state transitions. Upstash Redis maintains lease locks and rate-limiting buckets.
+\end{enumerate}
+\end{architecturebox}
+
+\subsection{Why Not Simple Alternatives?}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Why not Crontab?} Crontab executes locally on a single OS instance. It offers zero horizontal scaling, no worker failover, no dynamic prioritization, no retry mechanisms with jitter, and lacks cluster visibility.
+    \item \textbf{Why not pure RabbitMQ/Kafka?} While message brokers excel at FIFO stream ingestion, they lack native dynamic deadline preemption (Min-Heap EDF), fine-grained priority re-ordering across persistent state, and atomic leasing without extensive external consumer coordination.
+    \item \textbf{Why dual-layer (Redis + PostgreSQL)?} Redis provides ultra-low latency sub-millisecond distributed locks, rate-limiting counters, and ephemeral cluster heartbeats. PostgreSQL provides ACID relational persistence, auditability, immutable execution history, and crash-resilient storage.
+\end{itemize}
+
+\newpage
+% =========================================================================
+\section{First-Principles Technical Dictionary}
+\label{sec:dictionary}
+% =========================================================================
+This section provides rigorous definitions of every distributed systems concept, algorithm, and backend design pattern used in OptiQueue.
+
+\begin{conceptbox}{1. Idempotency \& Idempotency Key}
+\textbf{Definition}: A property of an operation whereby performing it multiple times yields the exact same outcome and side-effects as executing it once:
+\[ f(f(x)) = f(x) \]
+\textbf{Implementation in OptiQueue}: Clients generate a unique UUID (\texttt{idempotencyKey}) per business request (e.g., payment, email). Before inserting a job, OptiQueue checks the PostgreSQL unique constraint on \texttt{idempotency\_key}. If a duplicate submission arrives due to network retries, OptiQueue returns the existing job status without re-running the job handler.
+\end{conceptbox}
+
+\begin{conceptbox}{2. Min-Heap \& Earliest-Deadline-First (EDF) Scheduling}
+\textbf{Definition}: A complete binary tree data structure where the key at the root is the minimum among all keys in the tree. Earliest-Deadline-First is an optimal dynamic priority scheduling algorithm where tasks closest to their SLA deadline are dispatched first.
+\textbf{Implementation in OptiQueue}: \texttt{JobPriorityQueue.java} implements a synchronized Min-Heap. The comparator calculates priority score:
+\[ \text{Score} = (\text{Priority} \times 10^{12}) + \text{DeadlineEpochMillis} \]
+Insertion is $O(\log n)$, removal of the highest priority job is $O(\log n)$, and peek is $O(1)$.
+\end{conceptbox}
+
+\begin{conceptbox}{3. Distributed Lock \& Lease Time (TTL)}
+\textbf{Definition}: A mutual exclusion mechanism implemented across multiple independent compute nodes that do not share physical memory. A lease time (Time-To-Live) ensures the lock automatically expires if the lock holder dies without unlocking, preventing deadlock.
+\textbf{Implementation in OptiQueue}: \texttt{DistributedLockService.java} acquires locks using Redis atomic primitives:
+\begin{lstlisting}[language=bash]
+SET resource_key worker_uuid NX PX 30000
+\end{lstlisting}
+Lock release is executed via an atomic Lua script ensuring only the worker matching the assigned UUID can release the lock.
+\end{conceptbox}
+
+\begin{conceptbox}{4. Fencing Token \& Split-Brain Mitigation}
+\textbf{Definition}: A monotonically increasing number issued by a lock service every time a lock is acquired. It prevents a "zombie" worker (which was frozen by a long Stop-the-World GC pause) from writing stale data after its lease expired and another worker took over.
+\textbf{Implementation in OptiQueue}: When a worker claims a job, the job's \texttt{version} column in PostgreSQL is incremented. Writes are guarded by:
+\[ \text{UPDATE jobs SET ... WHERE id = :id AND version = :fencingToken} \]
+If the version changed, the write is rejected, eliminating split-brain corruption.
+\end{conceptbox}
+
+\begin{conceptbox}{5. Heartbeat \& Watchdog Failover Detection}
+\textbf{Definition}: A periodic signal transmitted by a distributed node to prove its liveness. A watchdog is an independent supervisory thread that monitors heartbeats and triggers remediation when a node fails to report within a timeout threshold.
+\textbf{Implementation in OptiQueue}: \texttt{HeartbeatService.java} emits a heartbeat to Redis key \texttt{worker:heartbeat:\{workerId\}} with a 15-second TTL every 5 seconds. \texttt{FailoverDetector.java} scans for \texttt{IN\_PROGRESS} jobs whose worker lease has expired and transitions them back to \texttt{PENDING} for re-assignment.
+\end{conceptbox}
+
+\begin{conceptbox}{6. Execution Delivery Semantics}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{At-Most-Once}: Message delivered 0 or 1 time. Data loss can occur if consumer crashes midway.
+    \item \textbf{At-Least-Once}: Message delivered 1 or more times. Guarantees no data loss, but duplicate processing can occur.
+    \item \textbf{Exactly-Once}: The user-observable effect happens precisely once. In distributed computing over unreliable networks, this is achieved via \textbf{At-Least-Once Delivery + Downstream Idempotency}. OptiQueue implements this exact model.
+\end{itemize}
+\end{conceptbox}
+
+\begin{conceptbox}{7. Exponential Backoff with Decorrelated Jitter}
+\textbf{Definition}: A retry algorithm that exponentially increases the wait interval between failure attempts while injecting random noise (jitter) to prevent the \textit{Thundering Herd Problem} (synchronized retry spikes crashing downstream databases).
+\textbf{Mathematical Formulation}:
+\[ t_{\text{backoff}} = \min(t_{\text{max}}, t_{\text{base}} \times 2^{\text{retryCount}}) + \text{UniformRandom}(0, \text{jitter}) \]
+\textbf{Implementation in OptiQueue}: \texttt{RetryEngine.java} computes the exact delay before placing a failed job into the delayed retry set.
+\end{conceptbox}
+
+\begin{conceptbox}{8. Dead Letter Queue (DLQ) \& Poison Pill Protection}
+\textbf{Definition}: A secondary containment queue where tasks that repeatedly fail beyond a maximum threshold (\texttt{maxRetries = 5}) are sequestered. A \textit{Poison Pill} is a malformed task that causes an uncaught exception or fatal crash whenever processed.
+\textbf{Implementation in OptiQueue}: Jobs exceeding retry limits are marked \texttt{DEAD\_LETTER}. The worker thread catches the failure, logs the root-cause stack trace into the \texttt{last\_error} database column, and releases the thread back to the pool, protecting the engine from cascading failure.
+\end{conceptbox}
+
+\begin{conceptbox}{9. Sliding Window Rate Limiting}
+\textbf{Definition}: A rate-limiting algorithm that counts client requests across a rolling time window, avoiding the boundary-burst flaw of Fixed Window counters.
+\textbf{Implementation in OptiQueue}: \texttt{RedisRateLimiter.java} leverages Redis Sorted Sets (\texttt{ZSET}):
+\begin{enumerate}
+    \item Remove elements older than $(t_{\text{current}} - \text{windowSize})$ via \texttt{ZREMRANGEBYSCORE}.
+    \item Count elements in the set via \texttt{ZCARD}. If count $\ge$ limit, reject request ($429\text{ Too Many Requests}$).
+    \item Otherwise, add current timestamp via \texttt{ZADD} and allow execution.
+\end{enumerate}
+\end{conceptbox}
+
+\begin{conceptbox}{10. Optimistic vs. Pessimistic Locking}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Pessimistic Locking} (\texttt{SELECT FOR UPDATE}): Locks database rows at the database engine level until transaction commit. Avoids conflicts but induces lock contention and risks deadlocks.
+    \item \textbf{Optimistic Locking} (\texttt{@Version}): Assumes collisions are rare. Each record carries a version integer. At update time, the SQL checks \texttt{WHERE version = current\_version}. If another transaction updated the row, a \texttt{OptimisticLockingFailureException} is raised. OptiQueue uses optimistic locking for high-concurrency state transitions.
+\end{itemize}
+\end{conceptbox}
+
+\begin{conceptbox}{11. Backpressure \& Bounded Blocking Queues}
+\textbf{Definition}: A resistance mechanism where an overloaded consumer tier signals the producer tier to slow down or reject submissions, preventing out-of-memory (OOM) fatal crashes.
+\textbf{Implementation in OptiQueue}: \texttt{JobBlockingQueue.java} bounds queue capacity (e.g., 5,000 items). When the queue reaches capacity, producers are rejected or throttled using standard Java \texttt{ThreadPoolExecutor.AbortPolicy} with structured HTTP 503 error feedback.
+\end{conceptbox}
+
+\newpage
+% =========================================================================
+\section{Class-Level Architecture \& Code Walkthrough}
+% =========================================================================
+
+\subsection{Domain Model: \texttt{Job.java} State Machine}
+The core unit of execution in OptiQueue is represented by the \texttt{Job} entity, progressing through an explicit, strictly validated state machine:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{State} & \textbf{Description} & \textbf{Next Valid Transitions} \\
+\midrule
+\texttt{PENDING} & Job registered in DB and placed in Min-Heap & \texttt{IN\_PROGRESS}, \texttt{CANCELLED} \\
+\texttt{IN\_PROGRESS} & Leased by a worker node, execution active & \texttt{COMPLETED}, \texttt{RETRYING}, \texttt{FAILED} \\
+\texttt{COMPLETED} & Handler finished successfully, result saved & \textit{Terminal State} \\
+\texttt{RETRYING} & Handler threw exception, awaiting backoff timer & \texttt{PENDING}, \texttt{DEAD\_LETTER} \\
+\texttt{DEAD\_LETTER} & Retries exhausted; stored for manual replay & \texttt{PENDING} (on manual replay) \\
+\texttt{CANCELLED} & Explicitly aborted by user/admin & \textit{Terminal State} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Distributed Mutual Exclusion: \texttt{DistributedLockService.java}}
+To ensure that a job is never executed simultaneously by two competing worker nodes, OptiQueue wraps task claiming in a Redis-backed distributed lock with atomic release:
+
+\begin{lstlisting}[language=Java, caption={Atomic Distributed Lock Release via Lua}]
+public boolean releaseLock(String lockKey, String workerToken) {
+    String luaScript = 
+        "if redis.call('get', KEYS[1]) == ARGV[1] then " +
+        "    return redis.call('del', KEYS[1]) " +
+        "else " +
+        "    return 0 " +
+        "end";
+    
+    Long result = redisTemplate.execute(
+        new DefaultRedisScript<>(luaScript, Long.class),
+        Collections.singletonList(lockKey),
+        workerToken
+    );
+    return result != null && result == 1L;
+}
+\end{lstlisting}
+
+\subsection{Failure Recovery: \texttt{FailoverDetector.java}}
+The watchdog runs on a recurring cron interval (every 10 seconds), executing the following resilient scan:
+\begin{enumerate}
+    \item Query PostgreSQL for all jobs with status \texttt{IN\_PROGRESS} where \texttt{updated\_at} is older than the lease timeout (30 seconds).
+    \item Check Redis for the worker's active heartbeat key (\texttt{worker:heartbeat:\{workerId\}}).
+    \item If the heartbeat is absent or expired, the worker is designated as \textbf{DEAD}.
+    \item The watchdog increments the job's \texttt{retry\_count}, updates the database state to \texttt{PENDING}, clears the assigned worker ID, and re-inserts the job into the active Min-Heap.
+\end{enumerate}
+
+\newpage
+% =========================================================================
+\section{Distributed Systems Interview Masterclass}
+% =========================================================================
+The following 15 questions represent high-frequency questions asked during Senior and Staff Software Engineer interviews at top-tier tech companies.
+
+\begin{interviewbox}{Q1: How does OptiQueue prevent two workers from picking up the exact same job?}
+\textbf{Answer}:
+OptiQueue prevents double-processing through a three-layer defense:
+\begin{enumerate}
+    \item \textbf{In-Memory Queue Synchronization}: Jobs in the Min-Heap (\texttt{JobPriorityQueue}) are dispatched through synchronized poll operations backed by a thread-safe \texttt{ReentrantLock}.
+    \item \textbf{Distributed Lock Claiming}: Before a worker starts executing a job, it must acquire an exclusive Redis lock on \texttt{lock:job:\{jobId\}} with an atomic \texttt{SET NX PX 30000} operation tied to its unique \texttt{workerId}.
+    \item \textbf{Optimistic Version Checking}: The transition from \texttt{PENDING} to \texttt{IN\_PROGRESS} in PostgreSQL executes with an optimistic version clause:
+    \[ \text{UPDATE jobs SET status = 'IN\_PROGRESS', version = version + 1 WHERE id = :id AND status = 'PENDING'} \]
+    If another worker raced and updated the record first, the row count is 0, and the second worker drops the task immediately.
+\end{enumerate}
+\end{interviewbox}
+
+\begin{interviewbox}{Q2: What happens if a worker crashes or encounters an Out-Of-Memory (OOM) error while executing a job?}
+\textbf{Answer}:
+\begin{enumerate}
+    \item The crashing worker stops transmitting heartbeats to Redis (\texttt{worker:heartbeat:\{workerId\}}).
+    \item Within 15 seconds, the Redis heartbeat key expires via native TTL.
+    \item The supervisory \texttt{FailoverDetector} thread scans for orphaned jobs where \texttt{status = 'IN\_PROGRESS'} and the heartbeat key no longer exists.
+    \item The watchdog reclaims the job, records a diagnostic error (\texttt{Worker died unexpectedly}), increments the retry count, and resets the status to \texttt{PENDING}.
+    \item Another healthy worker in the cluster picks up the job and resumes execution.
+\end{enumerate}
+\end{interviewbox}
+
+\begin{interviewbox}{Q3: Why is Jitter strictly required in Exponential Backoff?}
+\textbf{Answer}:
+Without jitter, if a downstream dependency (e.g., Stripe API or PostgreSQL) experiences a transient outage, all 1,000 active jobs failing at time $t_0$ will calculate the exact same backoff delay:
+\[ t_1 = t_0 + 2^1 = t_0 + 2\text{s} \]
+All 1,000 jobs will retry concurrently at $t_0 + 2\text{s}$, creating a massive traffic spike called the \textbf{Thundering Herd Problem}. This spike crashes the recovering dependency repeatedly. 
+
+By adding decorrelated uniform random jitter:
+\[ t_{\text{retry}} = \text{base} \times 2^{\text{attempt}} + \text{rand}(0, \text{jitter}) \]
+the 1,000 retries are uniformly dispersed across a time continuum, allowing the downstream system to recover gracefully without experiencing resonance waves.
+\end{interviewbox}
+
+\begin{interviewbox}{Q4: What is the Fencing Token problem, and how is it solved?}
+\textbf{Answer}:
+In distributed locking, Martin Kleppmann identified a critical failure mode:
+\begin{itemize}
+    \item Worker A acquires a 30s lock.
+    \item Worker A enters a 35s Stop-the-World JVM Garbage Collection pause.
+    \item While Worker A is paused, the Redis lock expires due to TTL.
+    \item Worker B acquires the lock and starts processing.
+    \item Worker A wakes up from GC, unaware that its lock expired, and executes a database write concurrently with Worker B.
+\end{itemize}
+\textbf{OptiQueue Solution}: OptiQueue utilizes PostgreSQL monotonic row versions as \textbf{Fencing Tokens}. When Worker B claims the job, it increments the version from $V_1 \to V_2$. When Worker A wakes up and attempts to commit with $V_1$, the SQL update fails because the version in the database is already $V_2$.
+\end{interviewbox}
+
+\begin{interviewbox}{Q5: How does OptiQueue achieve Exactly-Once semantics?}
+\textbf{Answer}:
+In distributed computing across networks subject to the Two Generals' Problem, pure physical exactly-once delivery is theoretically impossible. OptiQueue achieves \textbf{effectively exactly-once execution} via:
+\[ \text{At-Least-Once Delivery} + \text{Idempotent Consumer Processing} \]
+\begin{enumerate}
+    \item Every incoming job requires or is assigned a unique UUID \texttt{idempotencyKey}.
+    \item A database-level unique constraint on \texttt{idempotency\_key} prevents duplicate registrations.
+    \item Handlers (e.g., payment charges or email dispatches) record an idempotency token with downstream services before making external network calls.
+    \item Replayed or retried jobs check the execution ledger before re-executing side-effects.
+\end{enumerate}
+\end{interviewbox}
+
+\begin{interviewbox}{Q6: Explain the difference between Redis Sorted Sets and PostgreSQL B-Tree Indexes for priority queueing.}
+\textbf{Answer}:
+\begin{itemize}
+    \item \textbf{PostgreSQL B-Tree Index}: Allows querying ordered records (\texttt{SELECT ... ORDER BY priority, deadline LIMIT 1 FOR UPDATE SKIP LOCKED}). However, under thousands of concurrent workers, scanning and row-level locking on a shared disk table creates write amplification, buffer pool churn, and deadlocks.
+    \item \textbf{Redis Sorted Set (ZSET)}: Maintains an in-memory skip-list with a hash map. Member insertions and removals have guaranteed $O(\log n)$ algorithmic complexity with sub-millisecond in-memory response times, completely eliminating relational database contention for high-frequency dispatching loops.
+\end{itemize}
+\end{interviewbox}
+
+\begin{interviewbox}{Q7: How does OptiQueue prevent cascading worker death caused by Poison Pills?}
+\textbf{Answer}:
+A poison pill is a task containing malformed payloads (e.g., catastrophic backtracking regex or unhandled null pointers) that instantly crashes the thread or process.
+\begin{enumerate}
+    \item \textbf{Global Exception Barrier}: Worker consumer loops wrap task execution in a defensive \texttt{try-catch(Throwable)} block, intercepting not only \texttt{Exception} but also JVM \texttt{Error} types.
+    \item \textbf{Bounded Max Retries}: Tasks fail up to \texttt{maxRetries = 5}.
+    \item \textbf{DLQ Quarantine}: Once the retry threshold is breached, the job is evicted from the active queue and stored in \texttt{DEAD\_LETTER}. The worker thread is recycled back into the thread pool unharmed.
+\end{enumerate}
+\end{interviewbox}
+
+\begin{interviewbox}{Q8: How does OptiQueue handle Backpressure?}
+\textbf{Answer}:
+When ingestion rates outpace worker throughput:
+\begin{enumerate}
+    \item In-memory queues use bounded limits (\texttt{JobBlockingQueue} capped at 10,000).
+    \item When capacity is exceeded, the producer rejection policy triggers a structured HTTP 429 / 503 response with a \texttt{Retry-After} header.
+    \item Upstash Redis rate limiting throttles abusive callers before jobs even enter the ingestion pipeline.
+    \item The system degrades gracefully rather than suffering an Out-Of-Memory termination.
+\end{enumerate}
+\end{interviewbox}
+
+\begin{interviewbox}{Q9: Why does OptiQueue use HikariCP, and how is it tuned for ephemeral serverless databases?}
+\textbf{Answer}:
+OptiQueue connects to Neon Serverless PostgreSQL. Ephemeral serverless databases suspend compute when idle and impose strict connection limits.
+\begin{itemize}
+    \item \textbf{HikariCP} is the fastest production connection pool in the Java ecosystem due to bytecode-level optimization and lock-free thread-local caching.
+    \item OptiQueue configures \texttt{maximum-pool-size: 10}, \texttt{minimum-idle: 2}, and \texttt{idle-timeout: 30000ms}.
+    \item This prevents connection starvation on Neon's connection pooler (PgBouncer) while keeping latency under 5 milliseconds.
+\end{itemize}
+\end{interviewbox}
+
+\begin{interviewbox}{Q10: Walk through the complete lifecycle of a job when `⚡ Launch Demo Workload` is clicked.}
+\textbf{Answer}:
+\begin{enumerate}
+    \item The front-end makes a \texttt{POST /api/jobs/demo-batch} request with header \texttt{X-API-Key}.
+    \item \texttt{JobController} authenticates the request and dispatches 10 heterogeneous tasks:
+    \begin{itemize}
+        \item 4 \texttt{EMAIL\_SEND} tasks (priorities P1 to P4).
+        \item 3 \texttt{WEBHOOK\_DISPATCH} tasks.
+        \item 2 \texttt{REPORT\_GEN} tasks.
+        \item 1 intentionally invalid task configured to test Dead Letter Queue handling.
+    \end{itemize}
+    \item Tasks are assigned unique idempotency keys and inserted into Neon PostgreSQL in state \texttt{PENDING}.
+    \item \texttt{SchedulerService} inserts them into the in-memory Min-Heap ordered by priority.
+    \item \texttt{WorkerPool} threads claim jobs, acquire distributed locks, execute handlers, and record execution results.
+    \item 9 jobs transition to \texttt{COMPLETED}; the invalid task retries with backoff and safely quarantines into \texttt{DEAD\_LETTER}.
+    \item The front-end dashboard polls \texttt{/api/jobs/metrics} and renders live counter animations.
+\end{enumerate}
+\end{interviewbox}
+
+\newpage
+% =========================================================================
+\section{Interview Preparation Checklist \& Formulas}
+% =========================================================================
+
+\subsection{Essential Formulas to Write on the Whiteboard}
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Little's Law (Queue Capacity \& Concurrency)}:
+    \[ L = \lambda \times W \]
+    Where $L$ is concurrent jobs in the system, $\lambda$ is arrival rate (jobs/sec), and $W$ is average processing time per job.
+    
+    \item \textbf{Amdahl's Law (Theoretical Speedup with Worker Threads)}:
+    \[ S(N) = \frac{1}{(1 - P) + \frac{P}{N}} \]
+    Where $P$ is the parallelizable portion of the pipeline and $N$ is worker threads.
+    
+    \item \textbf{Full Jitter Sleep Duration Formula}:
+    \[ \text{Sleep} = \text{rand}(0, \min(M, B \times 2^i)) \]
+    Where $B$ is base backoff (1s), $M$ is maximum backoff (60s), and $i$ is retry attempt number.
+\end{enumerate}
+
+\subsection{Key Metrics of the Production OptiQueue Deployment}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Metric} & \textbf{OptiQueue Measured Value} & \textbf{Engineering Trade-Off} \\
+\midrule
+Queue Dispatch Latency & $< 1.2\text{ ms}$ & In-memory Min-Heap vs Disk I/O \\
+Distributed Lock Acquisition & $< 8\text{ ms}$ & Upstash Redis REST/TCP roundtrip \\
+Database Write Transaction & $< 18\text{ ms}$ & Neon PostgreSQL Write-Ahead Log \\
+Worker Failover Detection & $10.0\text{ s}$ & Heartbeat threshold vs false positives \\
+Maximum Retry Ceiling & $5\text{ attempts}$ & SLA preservation vs resource exhaustion \\
+Infrastructure Cost & \textbf{\$0.00 / month} & Free tiers on Render, Neon, and Upstash \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.8cm}
+\begin{center}
+\rule{0.5\textwidth}{0.5pt}\\[0.3cm]
+\textbf{End of Technical Handbook --- Good luck with your interviews!}
+\end{center}
+
+\end{document}

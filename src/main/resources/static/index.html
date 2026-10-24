@@ -703,7 +703,12 @@
       setTimeout(() => { t.style.display = 'none'; }, 4000);
     }
 
+    function closeAllModals() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+    }
+
     function openKeyModal() {
+      closeAllModals();
       document.getElementById('form-api-key').value = getApiKey();
       document.getElementById('key-modal').classList.add('open');
     }
@@ -714,9 +719,11 @@
 
     function saveApiKey() {
       const val = document.getElementById('form-api-key').value.trim();
-      localStorage.setItem('optiqueue_api_key', val);
-      closeKeyModal();
-      showToast('API Key saved to browser session');
+      if (val) {
+        localStorage.setItem('optiqueue_api_key', val);
+      }
+      closeAllModals();
+      showToast('API Key saved!');
       fetchData();
     }
 
@@ -726,6 +733,7 @@
     }
 
     function openSubmitModal() {
+      closeAllModals();
       onJobTypeChange();
       document.getElementById('form-idempotency').value = 'txn-' + Math.random().toString(36).substring(2, 9);
       document.getElementById('submit-modal').classList.add('open');
@@ -738,6 +746,17 @@
     function closeInspectModal() {
       document.getElementById('inspect-modal').classList.remove('open');
     }
+
+    // Close modals when clicking backdrop or pressing ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals();
+    });
+
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) closeAllModals();
+      });
+    });
 
     function inspectJob(id) {
       const job = cachedJobs.find(j => j.id === id);

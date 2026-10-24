@@ -210,4 +210,16 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
           AND j.status = 'IN_PROGRESS'
         """)
     int reassignJobsFromDeadWorker(@Param("workerId") String workerId);
+
+    // ── DASHBOARD & METRICS QUERIES ───────────────────────────────────────
+
+    /**
+     * Counts the total number of jobs currently in a given status.
+     */
+    long countByStatus(JobStatus status);
+
+    /**
+     * Retrieves the 50 most recently updated jobs for the live dashboard.
+     */
+    List<Job> findTop50ByOrderByUpdatedAtDesc();
 }

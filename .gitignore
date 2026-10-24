@@ -1,8 +1,72 @@
+# =============================================================================
+# OPTIQUEUE .gitignore — Comprehensive Protection against Secrets & Artifacts
+# =============================================================================
+
+# --- Environment Files & Secrets (CRITICAL: NEVER COMMIT CREDENTIALS) ---
+.env
+.env.*
+*.env
+*.secret
+credentials.json
+client_secrets.json
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# --- Maven & Build Artifacts ---
 target/
+*.jar
+*.war
+*.ear
+*.nar
+*.class
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# --- IDEs & Editors ---
 .idea/
 *.iml
+*.iws
+*.ipr
 .vscode/
+.classpath
+.project
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# --- Operating System Files ---
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --- Logs, Crash Dumps & Temp Files ---
 *.log
-.env
-.env.local
+logs/
+*.hprof
+hs_err_pid*
+replay_pid*
+*.tmp
+*.bak
+temp/
+tmp/
+temp_git_check*/
+scratch/

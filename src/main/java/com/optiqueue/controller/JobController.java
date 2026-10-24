@@ -222,17 +222,40 @@ public class JobController {
         return ResponseEntity.ok(jobService.getDeadLetterJobs());
     }
 
+    /**
+     * Manually re-queues a Dead Letter Queue job.
+     */
+    @PostMapping("/dead-letter/{id}/retry")
+    public ResponseEntity<JobResponse> retryDeadLetterJob(@PathVariable UUID id) {
+        return jobService.retryDeadLetterJob(id)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ── GET /api/jobs/metrics — Queue stats ────────────────────────────────
+
+    /**
+     * Exposes real-time queue counts across all statuses.
+     */
+    @GetMapping("/metrics")
+    public ResponseEntity<JobService.QueueMetrics> getMetrics() {
+        return ResponseEntity.ok(jobService.getQueueMetrics());
+    }
+
+    // ── GET /api/jobs/recent — Live dashboard feed ────────────────────────
+
+    /**
+     * Returns the 50 most recently updated jobs for real-time monitoring.
+     */
+    @GetMapping("/recent")
+    public ResponseEntity<List<JobResponse>> getRecentJobs() {
+        return ResponseEntity.ok(jobService.getRecentJobs());
+    }
+
     // ── GET /api/jobs?status=PENDING — List by status ─────────────────────
 
     /**
      * Lists jobs filtered by status. Useful for monitoring dashboards.
-     *
-     * PRODUCTION NOTE: This would need pagination (@PageableDefault + Page<JobResponse>)
-     * for any real workload. SELECT * with no LIMIT on a million-row table = OOM.
-     * We skip pagination here to keep Step 6 focused.
-     *
-     * Example curl:
-     *   curl "http://localhost:8080/api/jobs?status=FAILED"
      */
     @GetMapping
     public ResponseEntity<?> listJobs(

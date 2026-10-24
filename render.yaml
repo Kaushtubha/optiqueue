@@ -1,0 +1,48 @@
+# ═══════════════════════════════════════════════════════════════════
+# render.yaml — 1-Click Free Deployment Blueprint for Render.com
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+  # OptiQueue Main Web Application & Worker
+  - type: web
+    name: optiqueue-app
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: optiqueue-db
+          property: connectionString
+      - key: SPRING_DATA_REDIS_HOST
+        fromService:
+          type: redis
+          name: optiqueue-redis
+          property: host
+      - key: SPRING_DATA_REDIS_PORT
+        fromService:
+          type: redis
+          name: optiqueue-redis
+          property: port
+      - key: SECURITY_API_KEYS
+        generateValue: true
+
+databases:
+  # Managed PostgreSQL Database (Free Tier)
+  - name: optiqueue-db
+    plan: free
+    region: oregon
+    databaseName: optiqueue
+    user: optiqueue
+
+  # Managed Redis Instance (Free Tier)
+  - type: redis
+    name: optiqueue-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: noeviction
+    ipAllowList: [] # internal access only

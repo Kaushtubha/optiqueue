@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OptiQueue — Distributed Task Engine Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-card: rgba(17, 24, 39, 0.7);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-card-hover: rgba(56, 189, 248, 0.3);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-glow: rgba(56, 189, 248, 0.25);
+      --accent: #818cf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 30%, rgba(129, 140, 248, 0.08) 0%, transparent 40%);
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    .brand-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #38bdf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .live-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.5rem 0.9rem;
+      border-radius: 9999px;
+      border: 1px solid var(--border-card);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.9); }
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(14, 165, 233, 0.3);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-card);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: var(--text-muted);
+    }
+
+    .btn-danger-sm {
+      padding: 0.3rem 0.6rem;
+      font-size: 0.75rem;
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .btn-danger-sm:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    .btn-success-sm {
+      padding: 0.3rem 0.6rem;
+      font-size: 0.75rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .btn-success-sm:hover {
+      background: rgba(16, 185, 129, 0.25);
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card:hover {
+      border-color: var(--border-card-hover);
+      transform: translateY(-2px);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: transparent;
+    }
+
+    .kpi-card.pending::before { background: var(--warning); }
+    .kpi-card.in-progress::before { background: var(--primary); }
+    .kpi-card.completed::before { background: var(--success); }
+    .kpi-card.dlq::before { background: var(--danger); }
+    .kpi-card.total::before { background: var(--accent); }
+
+    .kpi-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .kpi-value {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    /* Tables & Tabs */
+    .tabs-container {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .tabs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .tab-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .tab-btn {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-card);
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    th {
+      padding: 0.9rem 1.25rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.775rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-card);
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-card);
+      color: var(--text-main);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.725rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .status-PENDING { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .status-IN_PROGRESS { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .status-COMPLETED { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-FAILED { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .status-DEAD_LETTER { background: rgba(225, 29, 72, 0.2); color: #fb7185; border: 1px solid rgba(225, 29, 72, 0.4); }
+    .status-CANCELLED { background: rgba(100, 116, 139, 0.2); color: #cbd5e1; border: 1px solid rgba(100, 116, 139, 0.4); }
+
+    .code-pill {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      color: #93c5fd;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #0f172a;
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 580px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+      animation: modalFadeIn 0.2s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .form-control {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-card);
+      color: var(--text-main);
+      padding: 0.65rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: var(--font-sans);
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+    }
+
+    textarea.form-control {
+      font-family: var(--font-mono);
+      font-size: 0.825rem;
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-title">OptiQueue Engine</div>
+          <div class="brand-subtitle">Distributed Earliest Deadline First (EDF) Task Scheduler</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="live-status">
+          <div class="pulse-dot"></div>
+          <span id="conn-status">Connected (PostgreSQL + Redis)</span>
+        </div>
+        <button class="btn btn-secondary" onclick="fetchData()">↻ Refresh</button>
+        <button class="btn btn-primary" onclick="openSubmitModal()">+ Submit Job</button>
+      </div>
+    </header>
+
+    <!-- KPI Metric Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card total">
+        <div class="kpi-label">Total Jobs</div>
+        <div class="kpi-value" id="kpi-total">0</div>
+      </div>
+      <div class="kpi-card pending">
+        <div class="kpi-label">Pending (EDF Queue)</div>
+        <div class="kpi-value" id="kpi-pending">0</div>
+      </div>
+      <div class="kpi-card in-progress">
+        <div class="kpi-label">In Progress (Workers)</div>
+        <div class="kpi-value" id="kpi-in-progress">0</div>
+      </div>
+      <div class="kpi-card completed">
+        <div class="kpi-label">Completed</div>
+        <div class="kpi-value" id="kpi-completed">0</div>
+      </div>
+      <div class="kpi-card dlq">
+        <div class="kpi-label">Dead Letter Queue (DLQ)</div>
+        <div class="kpi-value" id="kpi-dlq" style="color: #f87171;">0</div>
+      </div>
+    </div>
+
+    <!-- Live Queue & Tabs -->
+    <div class="tabs-container">
+      <div class="tabs-header">
+        <div class="tab-buttons">
+          <button class="tab-btn active" id="tab-all" onclick="setTab('all')">Recent Activity</button>
+          <button class="tab-btn" id="tab-dlq" onclick="setTab('dlq')">Dead Letter Queue (<span id="tab-dlq-count">0</span>)</button>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">
+          Auto-refreshing every 3s
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Job ID</th>
+              <th>Type</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Retries</th>
+              <th>Worker ID</th>
+              <th>Last Updated</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="jobs-table-body">
+            <tr>
+              <td colspan="8" class="empty-state">Loading active jobs...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit Job Modal -->
+  <div class="modal-backdrop" id="submit-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Submit New Job</div>
+        <button class="modal-close" onclick="closeSubmitModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Job Type</label>
+          <select class="form-control" id="form-job-type" onchange="onJobTypeChange()">
+            <option value="EMAIL_SEND">EMAIL_SEND (Transactional Email)</option>
+            <option value="WEBHOOK_DISPATCH">WEBHOOK_DISPATCH (HTTP Webhook)</option>
+            <option value="REPORT_GEN">REPORT_GEN (Async Data Aggregation)</option>
+            <option value="CUSTOM">CUSTOM</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Priority (1 = Highest, 5 = Normal)</label>
+          <input type="number" class="form-control" id="form-priority" min="1" max="5" value="3">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Payload (JSON)</label>
+          <textarea class="form-control" id="form-payload"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Idempotency Key (Optional)</label>
+          <input type="text" class="form-control" id="form-idempotency" placeholder="Auto-generated if blank">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeSubmitModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitJob()">Submit Job</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentTab = 'all';
+
+    const TEMPLATES = {
+      EMAIL_SEND: JSON.stringify({ to: "user@example.com", subject: "Welcome to OptiQueue!", body: "Your distributed task was scheduled." }, null, 2),
+      WEBHOOK_DISPATCH: JSON.stringify({ url: "https://httpbin.org/post", data: { event: "user.signup", timestamp: Date.now() } }, null, 2),
+      REPORT_GEN: JSON.stringify({ reportType: "MONTHLY_REVENUE", format: "PDF", targetMonth: "2026-10" }, null, 2),
+      CUSTOM: JSON.stringify({ action: "process_data", items: [1, 2, 3] }, null, 2)
+    };
+
+    function onJobTypeChange() {
+      const type = document.getElementById('form-job-type').value;
+      document.getElementById('form-payload').value = TEMPLATES[type] || "{}";
+    }
+
+    function openSubmitModal() {
+      onJobTypeChange();
+      document.getElementById('form-idempotency').value = 'txn-' + Math.random().toString(36).substring(2, 9);
+      document.getElementById('submit-modal').classList.add('open');
+    }
+
+    function closeSubmitModal() {
+      document.getElementById('submit-modal').classList.remove('open');
+    }
+
+    function setTab(tab) {
+      currentTab = tab;
+      document.getElementById('tab-all').classList.toggle('active', tab === 'all');
+      document.getElementById('tab-dlq').classList.toggle('active', tab === 'dlq');
+      fetchData();
+    }
+
+    async function fetchData() {
+      try {
+        // Fetch Metrics
+        const mRes = await fetch('/api/jobs/metrics');
+        if (mRes.ok) {
+          const metrics = await mRes.json();
+          document.getElementById('kpi-total').innerText = metrics.total;
+          document.getElementById('kpi-pending').innerText = metrics.pending;
+          document.getElementById('kpi-in-progress').innerText = metrics.inProgress;
+          document.getElementById('kpi-completed').innerText = metrics.completed;
+          document.getElementById('kpi-dlq').innerText = metrics.deadLetter;
+          document.getElementById('tab-dlq-count').innerText = metrics.deadLetter;
+        }
+
+        // Fetch Table Data
+        const endpoint = currentTab === 'dlq' ? '/api/jobs/dead-letter' : '/api/jobs/recent';
+        const jRes = await fetch(endpoint);
+        if (jRes.ok) {
+          const jobs = await jRes.json();
+          renderTable(jobs);
+        }
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      }
+    }
+
+    function renderTable(jobs) {
+      const tbody = document.getElementById('jobs-table-body');
+      if (!jobs || jobs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">${currentTab === 'dlq' ? 'No Dead Letter jobs! System healthy.' : 'No active jobs found.'}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = jobs.map(j => {
+        const shortId = j.id ? j.id.substring(0, 8) + '...' : '-';
+        const date = j.updatedAt ? new Date(j.updatedAt).toLocaleTimeString() : '-';
+        const worker = j.assignedWorkerId || '<span style="color:#64748b;">unassigned</span>';
+        
+        let actionBtn = '';
+        if (j.status === 'DEAD_LETTER') {
+          actionBtn = `<button class="btn btn-success-sm" onclick="retryJob('${j.id}')">↻ Replay</button>`;
+        } else if (j.status === 'PENDING' || j.status === 'IN_PROGRESS') {
+          actionBtn = `<button class="btn btn-danger-sm" onclick="cancelJob('${j.id}')">Cancel</button>`;
+        }
+
+        return `
+          <tr>
+            <td><span class="code-pill" title="${j.id}">${shortId}</span></td>
+            <td><strong>${j.jobType}</strong></td>
+            <td><span class="code-pill">P${j.priority}</span></td>
+            <td><span class="status-badge status-${j.status}">${j.status}</span></td>
+            <td>${j.retryCount}/${j.maxRetries}</td>
+            <td><span style="font-size:0.8rem;">${worker}</span></td>
+            <td style="color:var(--text-muted);font-size:0.8rem;">${date}</td>
+            <td>${actionBtn}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function submitJob() {
+      const jobType = document.getElementById('form-job-type').value;
+      const priority = parseInt(document.getElementById('form-priority').value, 10);
+      const payload = document.getElementById('form-payload').value;
+      const idempotencyKey = document.getElementById('form-idempotency').value;
+
+      try {
+        const res = await fetch('/api/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobType, priority, payload, idempotencyKey })
+        });
+        if (res.ok) {
+          closeSubmitModal();
+          fetchData();
+        } else {
+          alert('Submit failed: ' + (await res.text()));
+        }
+      } catch (err) {
+        alert('Network error submitting job: ' + err.message);
+      }
+    }
+
+    async function cancelJob(id) {
+      if (!confirm('Cancel job ' + id + '?')) return;
+      try {
+        await fetch('/api/jobs/' + id, { method: 'DELETE' });
+        fetchData();
+      } catch (err) {
+        alert('Cancel failed: ' + err.message);
+      }
+    }
+
+    async function retryJob(id) {
+      try {
+        const res = await fetch('/api/jobs/dead-letter/' + id + '/retry', { method: 'POST' });
+        if (res.ok) {
+          fetchData();
+        } else {
+          alert('Replay failed: ' + (await res.text()));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Initial Load & polling
+    fetchData();
+    setInterval(fetchData, 3000);
+  </script>
+</body>
+</html>

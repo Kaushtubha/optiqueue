@@ -45,6 +45,7 @@ public class WorkerPool {
     private final JobBlockingQueue blockingQueue;
     private final JobRepository    jobRepository;
     private final OptiQueueProperties props;
+    private final com.optiqueue.worker.handler.JobHandlerRegistry handlerRegistry;
 
     // ── STATE ─────────────────────────────────────────────────────────────
 
@@ -69,11 +70,13 @@ public class WorkerPool {
 
     public WorkerPool(JobBlockingQueue blockingQueue,
                       JobRepository jobRepository,
-                      OptiQueueProperties props) {
+                      OptiQueueProperties props,
+                      com.optiqueue.worker.handler.JobHandlerRegistry handlerRegistry) {
 
-        this.blockingQueue = blockingQueue;
-        this.jobRepository = jobRepository;
-        this.props         = props;
+        this.blockingQueue   = blockingQueue;
+        this.jobRepository   = jobRepository;
+        this.props           = props;
+        this.handlerRegistry = handlerRegistry;
 
         // Read worker ID from env var (injected by Docker Compose).
         // Falls back to a random UUID for local dev runs outside Docker.
@@ -223,7 +226,8 @@ public class WorkerPool {
         // ── STEP 2: EXECUTE ────────────────────────────────────────────────
         String result;
         try {
-            result = simulateJobExecution(fresh);
+            com.optiqueue.worker.handler.JobHandler handler = handlerRegistry.getHandler(fresh.getJobType());
+            result = handler.execute(fresh);
         } catch (Exception e) {
             // Job threw an exception — mark as FAILED, let retry engine handle
             log.warn("[{}] Job {} failed: {}", workerId, fresh.getId(), e.getMessage());
@@ -247,42 +251,6 @@ public class WorkerPool {
         log.info("[{}] Job {} → COMPLETED in {}ms",
             workerId, fresh.getId(),
             fresh.getCompletedAt().toEpochMilli() - fresh.getStartedAt().toEpochMilli());
-    }
-
-    /**
-     * Simulates job execution. Replace this with real dispatch logic in prod.
-     *
-     * Simulates:
-     *   - 100-500ms of "work" (random to create realistic timing variation)
-     *   - 20% random failure rate (to exercise retry logic)
-     *
-     * INTERVIEW Q: "How would you extend this for real job types?"
-     * A: Registry pattern:
-     *     Map<String, JobHandler> handlers = Map.of(
-     *         "EMAIL_SEND",    new EmailJobHandler(emailService),
-     *         "REPORT_GEN",    new ReportJobHandler(reportService)
-     *     );
-     *     handlers.get(job.getJobType()).execute(job);
-     *   Each handler is a @Component implementing a JobHandler interface.
-     *   Unknown job types fall to a default handler that marks the job as FAILED.
-     */
-    private String simulateJobExecution(Job job) throws Exception {
-        long durationMs = 100 + (long)(Math.random() * 400);
-
-        log.debug("[{}] Executing job {} ({}) for ~{}ms",
-            workerId, job.getId(), job.getJobType(), durationMs);
-
-        Thread.sleep(durationMs); // Simulate I/O or computation
-
-        // Simulate 20% failure rate to exercise retry logic
-        if (Math.random() < 0.20) {
-            throw new RuntimeException("Simulated transient failure for job " + job.getId());
-        }
-
-        return String.format(
-            "{\"status\":\"done\",\"worker\":\"%s\",\"durationMs\":%d}",
-            workerId, durationMs
-        );
     }
 
     // ── PUBLIC API ────────────────────────────────────────────────────────

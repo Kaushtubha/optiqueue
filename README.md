@@ -8,34 +8,54 @@
 
 <p align="center">
   <a href="#key-features">Features</a> •
+  <a href="#web-dashboard">Web Dashboard</a> •
   <a href="#architecture">Architecture</a> •
-  <a href="#prerequisites">Prerequisites</a> •
   <a href="#quick-start">Quick Start</a> •
+  <a href="#free-deployment">100% Free Deployment</a> •
   <a href="#api-reference">API Reference</a> •
-  <a href="#deployment">Deployment</a>
+  <a href="#security">Security</a>
 </p>
 
 ---
 
 ## 🌟 Key Features
 
-- **Robust Scheduling**: Custom Earliest Deadline First (EDF) scheduler with priority banding.
-- **Distributed Reliability**: At-least-once delivery guarantee using PostgreSQL as the source of truth.
+- **Robust Scheduling**: Custom Earliest Deadline First (EDF) scheduler with priority banding (1=Urgent to 5=Normal).
+- **Distributed Reliability**: At-least-once delivery guarantee using PostgreSQL as the durable source of truth.
 - **Worker Failover**: Automatic detection of dead workers via Redis heartbeats and recovery of orphaned jobs.
-- **Advanced Retry Engine**: Exponential backoff with Full/Equal Jitter to prevent thundering herds, plus a Dead Letter Queue (DLQ).
-- **Idempotency**: Safe re-submissions using `idempotency_key` with DB-level UNIQUE constraints to prevent TOCTOU race conditions.
-- **Rate Limiting**: IP-based rate limiting using Redis atomic operations (INCR+EXPIRE).
-- **Distributed Locks**: Ensures only one scheduler node polls the DB at a time (Split-brain prevention).
+- **Advanced Retry Engine**: Exponential backoff with Full/Equal Jitter to prevent thundering herds, plus Dead Letter Queue (DLQ) isolation.
+- **DLQ Replay**: One-click REST and UI re-queueing of failed dead-letter jobs.
+- **Pluggable Job Handlers**: Strategy-pattern registry supporting real job execution (`EMAIL_SEND`, `WEBHOOK_DISPATCH`, `REPORT_GEN`, and extensible handlers).
+- **Web Operations Dashboard**: Glassmorphism real-time UI showing live queue metrics, worker heartbeat statuses, and direct job submission.
+- **Idempotency**: Safe re-submissions using `idempotency_key` with DB-level `UNIQUE` constraints to prevent race conditions.
+- **Rate Limiting**: IP-based rate limiting using Redis atomic operations (`INCR` + `EXPIRE`).
+- **Distributed Locks**: Advisory Redis locks (`SET NX PX`) preventing split-brain polling across multiple scheduler nodes.
 - **Production Ready**: Multi-stage Docker builds, Flyway schema migrations, and API Key authentication.
 - **Fully Tested**: E2E Integration tests using Testcontainers (Real Postgres + Redis).
 
+---
+
+## 🖥️ Web Dashboard
+
+OptiQueue comes with an embedded, zero-dependency, real-time glassmorphism web dashboard.
+
+- **URL**: `http://localhost:8080/` (or `/index.html`)
+- **Features**:
+  - Live KPI cards: Total Jobs, Pending (EDF Queue), In-Progress Workers, Completed, and DLQ.
+  - Interactive **Job Submission Modal** with JSON templates for Email, Webhooks, and Reports.
+  - Live Activity Feed with auto-polling every 3 seconds.
+  - **Dead Letter Queue (DLQ) Manager** with one-click **Replay / Retry**.
+  - Immediate job cancellation.
+
+---
+
 ## 🏛 Architecture
 
-OptiQueue separates the durable state (PostgreSQL) from the ephemeral state (Redis) and execution logic.
+OptiQueue separates durable state (PostgreSQL) from ephemeral coordination (Redis) and worker execution logic.
 
 ```mermaid
 graph TD
-    Client[Client API] -->|POST /api/jobs| Controller[JobController]
+    Client[Client / Web UI] -->|POST /api/jobs| Controller[JobController]
     Controller --> RateLimit[Redis Rate Limiter]
     RateLimit -.->|Allowed| DB[(PostgreSQL)]
     
@@ -45,6 +65,11 @@ graph TD
     Scheduler -->|Push| Queue[JobBlockingQueue]
     Queue -->|Consume| Worker1[Worker Thread 1]
     Queue -->|Consume| Worker2[Worker Thread 2]
+
+    Worker1 --> Registry[JobHandlerRegistry]
+    Registry --> Email[EmailJobHandler]
+    Registry --> Webhook[WebhookJobHandler]
+    Registry --> Report[ReportGenJobHandler]
     
     Worker1 -.->|Update Status| DB
     Worker1 -.->|Ping TTL| Heartbeat[Redis Heartbeat]
@@ -55,11 +80,15 @@ graph TD
     Retry[RetryEngine] -.->|Re-queue FAILED| DB
 ```
 
+---
+
 ## 🛠 Prerequisites
 
 - **Java 21** (If running locally without Docker)
 - **Maven**
 - **Docker & Docker Compose** (For running the full stack)
+
+---
 
 ## 🚀 Quick Start
 
@@ -73,74 +102,109 @@ cd optiqueue
 # 2. Start the stack (App, Postgres 16, Redis 7)
 docker compose up -d --build
 
-# 3. Wait ~30 seconds for Flyway migrations to complete, then check health
+# 3. Open the Web Dashboard in your browser!
+# http://localhost:8080/
+
+# 4. Check API health
 curl http://localhost:8080/actuator/health
 ```
 
-To run the full end-to-end verification suite:
+To run the full end-to-end verification script:
 ```powershell
 # Windows PowerShell
 .\scripts\verify.ps1
 ```
 
+---
+
+## ☁️ 100% Free Deployment Guide
+
+You can deploy OptiQueue completely free using either of the following methods:
+
+### Option A: Render.com (1-Click Blueprint — Recommended)
+OptiQueue includes a ready-to-deploy [`render.yaml`](render.yaml) blueprint:
+1. Fork or push this repository to your GitHub account (`Kaushtubha/optiqueue`).
+2. Log into [Render.com](https://render.com) (Free Tier).
+3. Click **New +** $\rightarrow$ **Blueprints**.
+4. Select your `optiqueue` repository.
+5. Render will automatically provision:
+   - Free Web Service (Docker)
+   - Free Managed PostgreSQL Database
+   - Free Managed Redis
+6. Access your public OptiQueue dashboard and API at `https://optiqueue-app.onrender.com`!
+
+### Option B: Oracle Cloud "Always Free" Ampere ARM VM
+Oracle Cloud provides **4 OCPU cores, 24 GB RAM, and 200 GB NVMe storage 100% free forever**:
+1. Provision an "Always Free" Ubuntu/Oracle Linux Ampere (aarch64) VM.
+2. Allow ingress port `8080` in your VCN Security List.
+3. SSH into the VM and run the automated setup script:
+   ```bash
+   git clone https://github.com/Kaushtubha/optiqueue.git
+   cd optiqueue
+   chmod +x scripts/setup-oracle-vm.sh
+   ./scripts/setup-oracle-vm.sh
+   ```
+4. The GitHub Actions CI/CD workflow (`.github/workflows/ci-cd.yml`) will automatically build multi-arch images and deploy to your free VM on every push to `main`!
+
+---
+
 ## 📖 API Reference
 
-OptiQueue exposes a RESTful API. Below are the core endpoints.
+OptiQueue exposes a RESTful API:
 
-### Submit a Job
+### 1. Submit a Job
 ```bash
 curl -X POST http://localhost:8080/api/jobs \
   -H "Content-Type: application/json" \
   -d '{
         "jobType": "EMAIL_SEND",
-        "payload": "{\"to\":\"user@example.com\"}",
-        "priority": 3,
-        "idempotencyKey": "txn-987654321"
+        "payload": "{\"to\":\"user@example.com\",\"subject\":\"Welcome\"}",
+        "priority": 1,
+        "idempotencyKey": "txn-unique-12345"
       }'
 ```
-**Returns:** `201 Created` (or `200 OK` if the idempotency key already exists)
 
-### Get Job Status
+### 2. Live Queue Metrics
 ```bash
-curl http://localhost:8080/api/jobs/550e8400-e29b-41d4-a716-446655440000
+curl http://localhost:8080/api/jobs/metrics
 ```
-**Returns:** Job metadata including `status` (PENDING, IN_PROGRESS, COMPLETED, FAILED, RETRYING, CANCELLED, DEAD_LETTER).
-
-### Cancel a Job
-```bash
-curl -X DELETE http://localhost:8080/api/jobs/550e8400-e29b-41d4-a716-446655440000
-```
-
-## ☁️ Deployment (Oracle Cloud ARM)
-
-This project includes a CI/CD pipeline (GitHub Actions) configured to deploy automatically to an Oracle Cloud "Always Free" Ampere (arm64) VM.
-
-To set up your VM:
-1. Provision an Oracle Linux/Ubuntu ARM VM.
-2. Open port `8080` in the OCI Security List.
-3. Run the setup script on the VM:
-```bash
-chmod +x scripts/setup-oracle-vm.sh
-./scripts/setup-oracle-vm.sh
+**Returns:**
+```json
+{
+  "pending": 2,
+  "inProgress": 1,
+  "completed": 45,
+  "failed": 0,
+  "deadLetter": 1,
+  "cancelled": 0,
+  "total": 49
+}
 ```
 
-## 🧪 Testing
-
-OptiQueue uses **Testcontainers** for true integration testing. Docker must be running to execute the tests.
-
+### 3. Re-queue Dead Letter Queue (DLQ) Job
 ```bash
-# Run all unit and integration tests
-mvn test
+curl -X POST http://localhost:8080/api/jobs/dead-letter/{jobId}/retry
 ```
 
-## 🔐 Security
+### 4. Get Job Status & Result
+```bash
+curl http://localhost:8080/api/jobs/{jobId}
+curl http://localhost:8080/api/jobs/{jobId}/result
+```
 
-In production, OptiQueue uses API Key authentication.
-Set the `API_KEYS` environment variable in your `.env` file (comma-separated for zero-downtime rotation). 
-Clients must pass the key in the header:
-```http
-X-API-Key: your_secret_key_here
+### 5. Cancel a Job
+```bash
+curl -X DELETE http://localhost:8080/api/jobs/{jobId}
 ```
 
 ---
-> Designed with ❤️ for distributed systems architecture and reliability.
+
+## 🔐 Security & Sensitive Credentials
+
+- All sensitive environment files (`.env`, `*.env`, `.env.local`), private keys (`*.pem`, `*.key`), and secrets are strictly excluded by [`.gitignore`](.gitignore).
+- In production, OptiQueue enforces stateless API Key authentication via `X-API-Key`.
+- Set `API_KEYS=key1,key2` in your server environment variables for zero-downtime key rotation.
+
+---
+
+> Designed with ❤️ by **Kaushtubham Shukla** for distributed systems architecture, reliability, and scale.

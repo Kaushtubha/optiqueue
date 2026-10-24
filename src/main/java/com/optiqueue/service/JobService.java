@@ -197,7 +197,7 @@ public class JobService {
         return CancelResult.CANCELLED;
     }
 
-    // ── DEAD LETTER QUEUE ─────────────────────────────────────────────────
+    // ── DEAD LETTER QUEUE & RE-QUEUE ──────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<JobResponse> getDeadLetterJobs() {
@@ -205,6 +205,50 @@ public class JobService {
             .stream()
             .map(JobResponse::from)
             .collect(Collectors.toList());
+    }
+
+    /**
+     * Manually re-queues a DEAD_LETTER job, resetting its retry count and returning it to PENDING.
+     */
+    @Transactional
+    public Optional<JobResponse> retryDeadLetterJob(UUID id) {
+        Optional<Job> opt = jobRepository.findById(id);
+        if (opt.isEmpty()) {
+            return Optional.empty();
+        }
+        Job job = opt.get();
+        job.setStatus(JobStatus.PENDING);
+        job.setRetryCount(0);
+        job.setDeadLetter(false);
+        job.setLastError(null);
+        job.setNextRetryAt(null);
+        job.setAssignedWorkerId(null);
+        job.setStartedAt(null);
+        jobRepository.save(job);
+        log.info("Re-queued DEAD_LETTER job {} back to PENDING", id);
+        return Optional.of(JobResponse.from(job));
+    }
+
+    // ── METRICS & RECENT JOBS ─────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<JobResponse> getRecentJobs() {
+        return jobRepository.findTop50ByOrderByUpdatedAtDesc()
+            .stream()
+            .map(JobResponse::from)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public QueueMetrics getQueueMetrics() {
+        long pending = jobRepository.countByStatus(JobStatus.PENDING);
+        long inProgress = jobRepository.countByStatus(JobStatus.IN_PROGRESS);
+        long completed = jobRepository.countByStatus(JobStatus.COMPLETED);
+        long failed = jobRepository.countByStatus(JobStatus.FAILED);
+        long deadLetter = jobRepository.countByStatus(JobStatus.DEAD_LETTER);
+        long cancelled = jobRepository.countByStatus(JobStatus.CANCELLED);
+        long total = jobRepository.count();
+        return new QueueMetrics(pending, inProgress, completed, failed, deadLetter, cancelled, total);
     }
 
     // ── LIST BY STATUS ────────────────────────────────────────────────────
@@ -218,6 +262,19 @@ public class JobService {
     }
 
     // ── RESULT TYPES ──────────────────────────────────────────────────────
+
+    /**
+     * Wraps queue status counts for monitoring dashboards.
+     */
+    public record QueueMetrics(
+        long pending,
+        long inProgress,
+        long completed,
+        long failed,
+        long deadLetter,
+        long cancelled,
+        long total
+    ) {}
 
     /**
      * Wraps the job response + a flag indicating whether it was newly created.

@@ -70,16 +70,14 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain         chain) throws ServletException, IOException {
 
-        String path = request.getRequestURI();
-
-        // Skip auth for health/metrics endpoints (used by Docker + load balancers)
-        if (isExcluded(path)) {
+        // Only enforce API key authentication on /api/** endpoints (skip static web UI and actuator)
+        if (!path.startsWith("/api") || isExcluded(path)) {
             chain.doFilter(request, response);
             return;
         }
 
         // Auth disabled in local dev (API_KEYS not set)
-        if ("disabled".equals(apiKeysConfig)) {
+        if ("disabled".equalsIgnoreCase(apiKeysConfig)) {
             chain.doFilter(request, response);
             return;
         }

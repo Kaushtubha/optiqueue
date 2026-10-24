@@ -61,6 +61,8 @@ spring:
       port: ${REDIS_PORT:6379}
       # No password for local dev. In prod, set via env var.
       password: ${REDIS_PASS:}
+      ssl:
+        enabled: ${REDIS_SSL:false}
       timeout: 2000               # 2s socket timeout
       lettuce:
         pool:

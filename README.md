@@ -199,6 +199,59 @@ curl -X DELETE http://localhost:8080/api/jobs/{jobId}
 
 ---
 
+## 🧪 Running Tests
+
+OptiQueue comes with comprehensive test coverage separating unit tests and full integration tests:
+
+### 1. Run Unit Tests (No external Docker required)
+Executes all priority queue heaps, blocking queues, retry engine jitter math, idempotency, and failover detector unit tests:
+```bash
+./mvnw test -DexcludedGroups=integration
+# or on Windows:
+.\mvnw.cmd test -DexcludedGroups=integration
+```
+
+### 2. Run Full Integration Tests (Testcontainers)
+Spins up real, ephemeral PostgreSQL 15 and Redis 7 containers via Testcontainers to verify end-to-end Flyway migrations, API persistence, and concurrent job lifecycles:
+```bash
+./mvnw test -Dtest=JobApiIntegrationTest
+```
+*(Requires a running Docker daemon on the host or runs automatically in the GitHub Actions Ubuntu CI pipeline).*
+
+---
+
+## ⚖️ Key Design Decisions & Trade-offs
+
+1. **PostgreSQL as the Durable Source of Truth vs Pure In-Memory Queue (RabbitMQ / Kafka):**
+   - *Decision:* Persist jobs and their state transitions in PostgreSQL, utilizing Redis purely for fast ephemeral operations (distributed locks, rate limiting, and heartbeats).
+   - *Trade-off:* Slightly lower raw throughput compared to a pure in-memory broker, but provides full ACID persistence, transactional idempotency guarantees, complex state inspection, auditability, and zero risk of job loss across restarts.
+
+2. **Atomic Lua Scripts in Redis vs Multi-Step Client Calls:**
+   - *Decision:* Implemented distributed lock release and fixed-window rate-limiting via atomic Redis Lua scripts (`redis.call`).
+   - *Trade-off:* Shifted minor execution logic into the Redis engine to completely eliminate Time-of-Check to Time-of-Use (TOCTOU) race conditions and ensure keys are never left without an expiry during abrupt process crashes.
+
+3. **Earliest Deadline First (EDF) Min-Heap + Bounded Blocking Queue:**
+   - *Decision:* Two-stage in-memory architecture: a priority min-heap sorts batched DB jobs by urgency and deadline, draining into a bounded `ArrayBlockingQueue` consumed by the worker thread pool.
+   - *Trade-off:* Decouples batch database retrieval from thread execution, preventing the scheduler from flooding worker memory while ensuring critical priority jobs preempt lower priority ones.
+
+4. **Equal Jitter Backoff vs Fixed Backoff:**
+   - *Decision:* Added equal jitter (`half + random(0, half)`) to exponential backoff delays.
+   - *Trade-off:* Individual retry delays become slightly non-deterministic, but completely prevents the "thundering herd" problem where hundreds of retrying jobs simultaneously overwhelm downstream services after an outage.
+
+5. **Worker Heartbeat TTLs vs Active Database Polling:**
+   - *Decision:* Workers refresh Redis key TTLs every 5 seconds. Failover detector checks key presence rather than querying an updated DB timestamp.
+   - *Trade-off:* Requires Redis availability for worker health tracking, but offloads high-frequency health write traffic away from the PostgreSQL database engine.
+
+---
+
+## ⚠️ Known Limitations
+
+- **Single-Node DB Contention at Ultra-High Scale:** High-frequency polling on a single relational DB table can cause lock contention if scaled to tens of thousands of concurrent jobs per second without DB partitioning or a Redis-backed ready queue (e.g., Redis Sorted Sets).
+- **Advisory Distributed Locking:** The Redis distributed lock uses `SET NX PX` on a single Redis node. While sufficient for preventing duplicate scheduler polling, it does not implement full Redlock consensus across independent Redis clusters.
+- **Local Testcontainers Dependency:** Running `JobApiIntegrationTest` locally requires Docker Desktop to be running on the host. In headless environments without Docker, run the 38+ unit tests with `-DexcludedGroups=integration`.
+
+---
+
 ## 🔐 Security & Sensitive Credentials
 
 - All sensitive environment files (`.env`, `*.env`, `.env.local`), private keys (`*.pem`, `*.key`), and secrets are strictly excluded by [`.gitignore`](.gitignore).

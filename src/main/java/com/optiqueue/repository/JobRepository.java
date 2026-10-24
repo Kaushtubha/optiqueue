@@ -113,6 +113,16 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
         """)
     List<Job> findJobsReadyForRetry(@Param("now") Instant now);
 
+    /**
+     * Finds FAILED jobs that have exhausted their retry limit and should be moved to DEAD_LETTER.
+     */
+    @Query("""
+        SELECT j FROM Job j
+        WHERE j.status = 'FAILED'
+          AND j.retryCount >= j.maxRetries
+        """)
+    List<Job> findExhaustedFailedJobs();
+
     // ── FAILOVER QUERY ────────────────────────────────────────────────────
 
     /**

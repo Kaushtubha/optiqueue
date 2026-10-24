@@ -6,8 +6,8 @@ import com.optiqueue.controller.JobResponse;
 import com.optiqueue.domain.Job;
 import com.optiqueue.domain.JobStatus;
 import com.optiqueue.repository.JobRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,36 +17,18 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * JobService — business logic layer for job lifecycle management.
- *
- * Sits between JobController (HTTP concerns) and JobRepository (DB concerns).
- * Contains all business rules: idempotency, state validation, cancellation policy.
- *
- * ALL public methods are @Transactional:
- *   - submitJob: read (idempotency check) + conditional write (INSERT) → must be atomic
- *   - cancelJob: read (find) + write (UPDATE status) → must be atomic
- *   Without a transaction, a race between two identical submissions could
- *   both pass the idempotency check and both INSERT — creating a duplicate.
- *   The DB UNIQUE constraint on idempotency_key is the final safety net,
- *   but the @Transactional check prevents the duplicate INSERT attempt.
- *
- * INTERVIEW Q: "Is @Transactional on a service method enough to prevent race conditions?"
- * A: No, not alone. @Transactional provides atomicity and isolation, but at
- *    the default READ_COMMITTED isolation level, two transactions can both
- *    read "no row with this idempotency key" before either commits their INSERT.
- *    The real safety net is the UNIQUE constraint on the idempotency_key column —
- *    the second INSERT throws a DataIntegrityViolationException, which we catch
- *    and convert to a "return existing job" response. Belt-and-suspenders: both
- *    application-level check AND DB constraint.
- */
 @Service
-@Slf4j
-@RequiredArgsConstructor
 public class JobService {
+
+    private static final Logger log = LoggerFactory.getLogger(JobService.class);
 
     private final JobRepository       jobRepository;
     private final OptiQueueProperties props;
+
+    public JobService(JobRepository jobRepository, OptiQueueProperties props) {
+        this.jobRepository = jobRepository;
+        this.props = props;
+    }
 
     // ── SUBMIT ────────────────────────────────────────────────────────────
 
@@ -217,7 +199,7 @@ public class JobService {
             return Optional.empty();
         }
         Job job = opt.get();
-        job.setStatus(JobStatus.PENDING);
+        job.transitionTo(JobStatus.PENDING);
         job.setRetryCount(0);
         job.setDeadLetter(false);
         job.setLastError(null);

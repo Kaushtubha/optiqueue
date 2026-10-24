@@ -5,8 +5,8 @@ import com.optiqueue.domain.Job;
 import com.optiqueue.domain.JobStatus;
 import com.optiqueue.redis.HeartbeatService;
 import com.optiqueue.repository.JobRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,57 +14,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * FailoverDetector — detects dead workers and recovers their stuck jobs.
- *
- * Runs every 30 seconds, scanning for IN_PROGRESS jobs whose assigned worker
- * has not sent a heartbeat recently (heartbeat key expired from Redis).
- *
- * RECOVERY GUARANTEE:
- *   Combined with the retry engine (Step 7), this gives us:
- *   - At-least-once execution: every PENDING job will eventually run
- *   - Bounded recovery time: max time from crash to re-queue = heartbeatTtlMs
- *     (default: 15 seconds)
- *
- * DETECTION ALGORITHM:
- *   1. Find all IN_PROGRESS jobs where startedAt < now - heartbeatTtlMs
- *      (the job has been running longer than a worker can survive without heartbeat)
- *   2. For each such job, check Redis: EXISTS optiqueue:heartbeat:{assignedWorkerId}
- *   3. If key missing → worker dead → reset job to PENDING
- *   4. If key exists → worker alive but slow → leave it running
- *      (give slow jobs extra time; we don't want false positives killing long jobs)
- *
- * TRADEOFFS:
- *   - FALSE POSITIVE risk: a worker is alive but under GC pressure and temporarily
- *     missed its heartbeat window. Our 3× heartbeat interval TTL (15s for 5s interval)
- *     gives 2 missed heartbeats grace — greatly reduces false positives.
- *   - FALSE NEGATIVE risk: a worker died but its heartbeat key hasn't expired yet.
- *     Max exposure window = heartbeatTtlMs (15s). Acceptable.
- *
- * INTERVIEW Q: "What happens if the FailoverDetector itself crashes?"
- * A: The detector is stateless — it reads from DB and Redis, writes to DB.
- *    If it crashes, Spring's @Scheduled timer won't fire. Jobs stay IN_PROGRESS.
- *    On restart, the detector starts again and catches up. The maximum stuck time
- *    is: detector crash duration + heartbeatTtlMs + detectorInterval.
- *    In production, run two detector instances with Kubernetes pod anti-affinity
- *    to ensure at least one is always running.
- *
- * INTERVIEW Q: "How does this compare to Kubernetes liveness probes?"
- * A: Kubernetes liveness probes restart a crashed pod. But they don't know about
- *    application-level job state. If a worker crashes mid-job, Kubernetes restarts
- *    the pod but the DB still shows the job as IN_PROGRESS. The FailoverDetector
- *    is an APPLICATION-LEVEL health mechanism complementing Kubernetes.
- *    Both layers are needed: Kubernetes handles process crashes, FailoverDetector
- *    handles job state recovery.
- */
 @Component
-@Slf4j
-@RequiredArgsConstructor
 public class FailoverDetector {
+
+    private static final Logger log = LoggerFactory.getLogger(FailoverDetector.class);
 
     private final JobRepository       jobRepository;
     private final HeartbeatService    heartbeatService;
     private final OptiQueueProperties props;
+
+    public FailoverDetector(JobRepository jobRepository, HeartbeatService heartbeatService, OptiQueueProperties props) {
+        this.jobRepository = jobRepository;
+        this.heartbeatService = heartbeatService;
+        this.props = props;
+    }
 
     // ── FAILOVER SCAN ─────────────────────────────────────────────────────
 
@@ -171,8 +134,8 @@ public class FailoverDetector {
 
         String previousWorker = job.getAssignedWorkerId();
 
-        // Reset the job state
-        job.setStatus(JobStatus.PENDING);
+        // Reset the job state via validated state machine transition
+        job.transitionTo(JobStatus.PENDING);
         job.setAssignedWorkerId(null);     // No longer owned by the dead worker
         job.setStartedAt(null);            // Clear the stale start time
         job.setLastError("Recovered from dead worker: " + previousWorker);

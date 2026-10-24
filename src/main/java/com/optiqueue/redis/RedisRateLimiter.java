@@ -1,66 +1,40 @@
 package com.optiqueue.redis;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-/**
- * RedisRateLimiter — fixed-window rate limiter using Redis INCR + EXPIRE.
- *
- * ALGORITHM (fixed window):
- *   Key format: "rate:{clientId}:{windowStart}"
- *   windowStart = epoch_second / windowSeconds  (all requests in the same
- *                                                 second-bucket share a key)
- *
- *   On each request:
- *     1. INCR key          → atomic increment, returns new count
- *     2. If count == 1:    → first request in this window → SET EXPIRE
- *        (sets TTL only on first request to avoid resetting the window)
- *     3. If count > limit → REJECTED (429 Too Many Requests)
- *     4. Else             → ALLOWED
- *
- * ATOMICITY:
- *   INCR is an atomic Redis command — no two clients can get the same count.
- *   The INCR + EXPIRE are NOT atomic with each other. A crash between them
- *   could leave the key without an expiry (memory leak). Production fix:
- *   use a Lua script to make INCR + EXPIRE atomic in a single round trip:
- *
- *     local count = redis.call('INCR', KEYS[1])
- *     if count == 1 then
- *       redis.call('EXPIRE', KEYS[1], ARGV[1])
- *     end
- *     return count
- *
- *   We show both approaches below (simple and Lua-based).
- *
- * INTERVIEW Q: "What's the Redis memory impact of rate limiting?"
- * A: Each unique clientId gets one key per time window. Key expires automatically
- *    when the window closes. Memory usage = O(unique clients) at any moment.
- *    For 10,000 active clients with 60s windows: ~10,000 keys × ~60 bytes ≈ 600KB.
- *    Trivial. Redis handles tens of millions of keys comfortably.
- *
- * INTERVIEW Q: "How does INCR prevent race conditions without a mutex?"
- * A: Redis is single-threaded for command execution. All commands are queued
- *    and executed sequentially. INCR is processed atomically — no two clients
- *    ever see the same intermediate state. This is Redis's core concurrency model:
- *    single-threaded event loop, no locks needed for individual commands.
- */
 @Component
-@Slf4j
-@RequiredArgsConstructor
 public class RedisRateLimiter {
 
+    private static final Logger log = LoggerFactory.getLogger(RedisRateLimiter.class);
+
     private final StringRedisTemplate redisTemplate;
+
+    public RedisRateLimiter(StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+
+    private static final String RATE_LIMIT_LUA = """
+        local count = redis.call('INCR', KEYS[1])
+        if count == 1 then
+            redis.call('EXPIRE', KEYS[1], ARGV[1])
+        end
+        return count
+        """;
+
+    private static final org.springframework.data.redis.core.script.RedisScript<Long> RATE_LIMIT_SCRIPT =
+        new org.springframework.data.redis.core.script.DefaultRedisScript<>(RATE_LIMIT_LUA, Long.class);
 
     // Default limits — overridable per call
     private static final int    DEFAULT_LIMIT_PER_WINDOW = 100; // requests
     private static final long   DEFAULT_WINDOW_SECONDS   = 60;  // 1 minute window
 
-    // ── SIMPLE FIXED WINDOW ───────────────────────────────────────────────
+    // ── ATOMIC FIXED WINDOW ───────────────────────────────────────────────
 
     /**
      * Checks if a client (identified by clientId, e.g. IP or API key) is
@@ -77,22 +51,16 @@ public class RedisRateLimiter {
         String key = String.format("rate:%s:%d", clientId, windowStart);
 
         try {
-            // INCR is atomic — returns the new value after increment
-            Long count = redisTemplate.opsForValue().increment(key);
+            // Atomic INCR + EXPIRE via Lua script
+            Long count = redisTemplate.execute(
+                RATE_LIMIT_SCRIPT,
+                java.util.Collections.singletonList(key),
+                String.valueOf(windowSec + 1)
+            );
 
             if (count == null) {
-                // Redis is unavailable — fail open (allow request) to avoid
-                // blocking all traffic when Redis goes down.
-                // PRODUCTION NOTE: You might choose fail-closed (reject) for
-                // security-sensitive endpoints. Document this decision.
                 log.warn("Redis unavailable for rate limit check on key: {}", key);
                 return RateLimitResult.allowed(0, limit);
-            }
-
-            if (count == 1) {
-                // First request in this window — set the TTL
-                // +1 buffer so the key doesn't expire mid-window
-                redisTemplate.expire(key, windowSec + 1, TimeUnit.SECONDS);
             }
 
             if (count > limit) {

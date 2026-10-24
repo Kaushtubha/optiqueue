@@ -2,29 +2,13 @@ package com.optiqueue.controller;
 
 import com.optiqueue.domain.Job;
 import com.optiqueue.domain.JobStatus;
-import lombok.Builder;
-import lombok.Data;
 
 import java.time.Instant;
 import java.util.UUID;
 
 /**
  * JobResponse — outbound DTO returned by all job endpoints.
- *
- * Contains only what a client needs to see. Internal fields like
- * assignedWorkerId, lastError (only in DLQ view), heap position etc.
- * are intentionally excluded from the standard response.
- *
- * Uses @Builder so JobService can construct it fluently:
- *   JobResponse.from(job) → static factory method below.
- *
- * NOTE: We use Instant for timestamps. The Jackson ObjectMapper
- * (auto-configured by Spring Boot) serializes Instant as an ISO-8601
- * string (e.g., "2026-06-16T13:00:00Z") by default, which is
- * universally parseable by all clients. No timezone confusion.
  */
-@Data
-@Builder
 public class JobResponse {
 
     private UUID      id;
@@ -37,27 +21,98 @@ public class JobResponse {
     private int       retryCount;
     private int       maxRetries;
     private boolean   isDeadLetter;
-    private String    result;          // Populated only when status=COMPLETED
-    private String    lastError;       // Populated only in DLQ view
+    private String    result;
+    private String    lastError;
     private Instant   createdAt;
     private Instant   updatedAt;
     private Instant   startedAt;
     private Instant   completedAt;
     private Instant   nextRetryAt;
 
-    /**
-     * Static factory method: maps a Job entity to a JobResponse DTO.
-     *
-     * WHY static factory over a constructor or MapStruct?
-     *   - Constructor: long parameter list = hard to read and maintain
-     *   - MapStruct: generates compile-time mapping code; great for large projects
-     *     but adds annotation processing complexity we don't need here
-     *   - Static factory: readable, co-located with the DTO, easily testable
-     *
-     * PRODUCTION NOTE: For complex mappings with many DTOs, MapStruct is
-     * the right choice. It generates null-safe, type-safe mappers at compile
-     * time with zero runtime overhead.
-     */
+    public JobResponse() {
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
+
+    public String getJobType() { return jobType; }
+    public void setJobType(String jobType) { this.jobType = jobType; }
+
+    public String getPayload() { return payload; }
+    public void setPayload(String payload) { this.payload = payload; }
+
+    public JobStatus getStatus() { return status; }
+    public void setStatus(JobStatus status) { this.status = status; }
+
+    public int getPriority() { return priority; }
+    public void setPriority(int priority) { this.priority = priority; }
+
+    public Instant getDeadline() { return deadline; }
+    public void setDeadline(Instant deadline) { this.deadline = deadline; }
+
+    public int getRetryCount() { return retryCount; }
+    public void setRetryCount(int retryCount) { this.retryCount = retryCount; }
+
+    public int getMaxRetries() { return maxRetries; }
+    public void setMaxRetries(int maxRetries) { this.maxRetries = maxRetries; }
+
+    public boolean isDeadLetter() { return isDeadLetter; }
+    public void setDeadLetter(boolean deadLetter) { isDeadLetter = deadLetter; }
+
+    public String getResult() { return result; }
+    public void setResult(String result) { this.result = result; }
+
+    public String getLastError() { return lastError; }
+    public void setLastError(String lastError) { this.lastError = lastError; }
+
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
+    public Instant getStartedAt() { return startedAt; }
+    public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }
+
+    public Instant getCompletedAt() { return completedAt; }
+    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
+
+    public Instant getNextRetryAt() { return nextRetryAt; }
+    public void setNextRetryAt(Instant nextRetryAt) { this.nextRetryAt = nextRetryAt; }
+
+    public static class Builder {
+        private final JobResponse res = new JobResponse();
+
+        public Builder id(UUID id) { res.id = id; return this; }
+        public Builder idempotencyKey(String idempotencyKey) { res.idempotencyKey = idempotencyKey; return this; }
+        public Builder jobType(String jobType) { res.jobType = jobType; return this; }
+        public Builder payload(String payload) { res.payload = payload; return this; }
+        public Builder status(JobStatus status) { res.status = status; return this; }
+        public Builder priority(int priority) { res.priority = priority; return this; }
+        public Builder deadline(Instant deadline) { res.deadline = deadline; return this; }
+        public Builder retryCount(int retryCount) { res.retryCount = retryCount; return this; }
+        public Builder maxRetries(int maxRetries) { res.maxRetries = maxRetries; return this; }
+        public Builder isDeadLetter(boolean isDeadLetter) { res.isDeadLetter = isDeadLetter; return this; }
+        public Builder result(String result) { res.result = result; return this; }
+        public Builder lastError(String lastError) { res.lastError = lastError; return this; }
+        public Builder createdAt(Instant createdAt) { res.createdAt = createdAt; return this; }
+        public Builder updatedAt(Instant updatedAt) { res.updatedAt = updatedAt; return this; }
+        public Builder startedAt(Instant startedAt) { res.startedAt = startedAt; return this; }
+        public Builder completedAt(Instant completedAt) { res.completedAt = completedAt; return this; }
+        public Builder nextRetryAt(Instant nextRetryAt) { res.nextRetryAt = nextRetryAt; return this; }
+
+        public JobResponse build() {
+            return res;
+        }
+    }
+
     public static JobResponse from(Job job) {
         return JobResponse.builder()
             .id(job.getId())

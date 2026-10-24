@@ -4,8 +4,8 @@ import com.optiqueue.config.OptiQueueProperties;
 import com.optiqueue.domain.Job;
 import com.optiqueue.domain.JobStatus;
 import com.optiqueue.repository.JobRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,39 +14,18 @@ import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * RetryEngine — background task that moves failed jobs back into the queue.
- *
- * Runs on a fixed schedule, finds all FAILED jobs whose backoff delay has
- * elapsed, and transitions them to PENDING so the scheduler re-queues them.
- *
- * SEPARATION OF CONCERNS:
- *   The retry DECISION (should we retry? how long to wait?) is made in
- *   Job.recordFailure() at the moment of failure — storing nextRetryAt.
- *   The retry EXECUTION (actually re-queuing) is done here asynchronously.
- *   This separation means the worker thread that processes a failed job
- *   doesn't block waiting to retry — it returns to the pool immediately.
- *
- * POLLING vs EVENT-DRIVEN:
- *   We poll the DB every 5s for jobs ready to retry. This is simple and
- *   correct. Production alternative: use a Redis sorted set with the score
- *   as nextRetryAt timestamp — O(log n) lookup for due jobs, no DB polling.
- *   We implement the Redis version in Step 9.
- *
- * TRANSACTIONAL BOUNDARY:
- *   Each job's FAILED → PENDING transition is committed in the outer
- *   @Transactional scope (the entire processRetries() method). If any
- *   single job's update fails, the whole batch rolls back. For large
- *   retry batches in production, process each job in its own transaction
- *   to limit rollback blast radius.
- */
 @Component
-@Slf4j
-@RequiredArgsConstructor
 public class RetryEngine {
+
+    private static final Logger log = LoggerFactory.getLogger(RetryEngine.class);
 
     private final JobRepository       jobRepository;
     private final OptiQueueProperties props;
+
+    public RetryEngine(JobRepository jobRepository, OptiQueueProperties props) {
+        this.jobRepository = jobRepository;
+        this.props = props;
+    }
 
     // ── RETRY SCAN ────────────────────────────────────────────────────────
 
@@ -128,13 +107,8 @@ public class RetryEngine {
     @Scheduled(fixedDelayString = "${retry.dlq-scan-interval-ms:30000}", initialDelay = 15000)
     @Transactional
     public void processDeadLetters() {
-        // Find FAILED jobs that have exhausted retries but weren't moved to DLQ
-        // This is a defensive query — normally recordFailure() handles this
-        List<Job> exhaustedJobs = jobRepository.findJobsReadyForRetry(
-            Instant.now().plusSeconds(86400) // Future time → catches all ready-for-retry
-        ).stream()
-         .filter(j -> j.getRetryCount() >= j.getMaxRetries())
-         .toList();
+        // Query FAILED jobs that have exhausted retries but were not yet moved to DLQ
+        List<Job> exhaustedJobs = jobRepository.findExhaustedFailedJobs();
 
         if (exhaustedJobs.isEmpty()) return;
 

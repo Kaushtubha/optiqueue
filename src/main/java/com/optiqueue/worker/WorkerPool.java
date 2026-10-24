@@ -5,7 +5,8 @@ import com.optiqueue.domain.Job;
 import com.optiqueue.domain.JobStatus;
 import com.optiqueue.repository.JobRepository;
 import jakarta.annotation.PreDestroy;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -13,32 +14,10 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * WorkerPool — manages a fixed pool of worker threads that consume jobs
- * from the JobBlockingQueue and execute them.
- *
- * LIFECYCLE:
- *   1. Created by Spring at startup (singleton @Component)
- *   2. SchedulerService calls submit(job) to hand off jobs
- *   3. Worker threads loop on blockingQueue.take() → execute
- *   4. On Spring shutdown, @PreDestroy calls shutdown() for graceful drain
- *
- * THREAD NAMING CONVENTION:
- *   Threads are named "optiqueue-worker-N" (N = 1, 2, 3...).
- *   Named threads appear in thread dumps, profilers, and logs.
- *   Unnamed threads show as "pool-1-thread-N" — impossible to diagnose.
- *   Always name your thread pools in production.
- *
- * WORKER ID:
- *   Each WorkerPool instance has a unique workerId (UUID).
- *   In Docker Compose with multiple app containers, each container
- *   has a different WORKER_ID env var (set in docker-compose.yml).
- *   This ID is stamped on jobs claimed by this node (job.assignedWorkerId),
- *   used by the failover mechanism in Step 10.
- */
 @Component
-@Slf4j
 public class WorkerPool {
+
+    private static final Logger log = LoggerFactory.getLogger(WorkerPool.class);
 
     // ── DEPENDENCIES ──────────────────────────────────────────────────────
 
@@ -191,66 +170,73 @@ public class WorkerPool {
      * Here we simulate with Thread.sleep() for demonstration.
      */
     private void executeJob(Job job) {
-        log.info("[{}] Claiming job: id={}, type={}, priority={}",
-            workerId, job.getId(), job.getJobType(), job.getPriority());
-
-        // ── STEP 1: CLAIM ──────────────────────────────────────────────────
-        // Load fresh from DB (may have been updated since scheduler loaded it)
-        Job fresh = jobRepository.findById(job.getId()).orElse(null);
-        if (fresh == null) {
-            log.warn("Job {} not found in DB — skipping (may have been cancelled)", job.getId());
-            return;
-        }
-
-        // Check it's still PENDING (idempotency: another worker might have grabbed it)
-        if (fresh.getStatus() != JobStatus.PENDING && fresh.getStatus() != JobStatus.RETRYING) {
-            log.warn("Job {} is already {} — skipping (concurrent claim detected)",
-                fresh.getId(), fresh.getStatus());
-            return;
-        }
-
+        org.slf4j.MDC.put("jobId", job.getId() != null ? job.getId().toString() : "unknown");
+        org.slf4j.MDC.put("workerId", workerId);
         try {
-            fresh.claimBy(workerId); // PENDING → IN_PROGRESS
-            jobRepository.save(fresh);
-        } catch (Exception e) {
-            // Claim failed (e.g., DB down) — put job back in queue for retry
-            log.error("Failed to claim job {}: {}", fresh.getId(), e.getMessage());
-            try {
-                blockingQueue.put(fresh); // Back to queue
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
+            log.info("[{}] Claiming job: id={}, type={}, priority={}",
+                workerId, job.getId(), job.getJobType(), job.getPriority());
+
+            // ── STEP 1: CLAIM ──────────────────────────────────────────────────
+            // Load fresh from DB (may have been updated since scheduler loaded it)
+            Job fresh = jobRepository.findById(job.getId()).orElse(null);
+            if (fresh == null) {
+                log.warn("Job {} not found in DB — skipping (may have been cancelled)", job.getId());
+                return;
             }
-            return;
-        }
 
-        // ── STEP 2: EXECUTE ────────────────────────────────────────────────
-        String result;
-        try {
-            com.optiqueue.worker.handler.JobHandler handler = handlerRegistry.getHandler(fresh.getJobType());
-            result = handler.execute(fresh);
-        } catch (Exception e) {
-            // Job threw an exception — mark as FAILED, let retry engine handle
-            log.warn("[{}] Job {} failed: {}", workerId, fresh.getId(), e.getMessage());
+            // Check it's still PENDING (idempotency: another worker might have grabbed it)
+            if (fresh.getStatus() != JobStatus.PENDING && fresh.getStatus() != JobStatus.RETRYING) {
+                log.warn("Job {} is already {} — skipping (concurrent claim detected)",
+                    fresh.getId(), fresh.getStatus());
+                return;
+            }
 
-            fresh.recordFailure(
-                e.getMessage(),
-                props.getRetry().getInitialDelayMs()
-            );
+            try {
+                fresh.claimBy(workerId); // PENDING → IN_PROGRESS
+                jobRepository.save(fresh);
+            } catch (Exception e) {
+                // Claim failed (e.g., DB down) — put job back in queue for retry
+                log.error("Failed to claim job {}: {}", fresh.getId(), e.getMessage());
+                try {
+                    blockingQueue.put(fresh); // Back to queue
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+                return;
+            }
+
+            // ── STEP 2: EXECUTE ────────────────────────────────────────────────
+            String result;
+            try {
+                com.optiqueue.worker.handler.JobHandler handler = handlerRegistry.getHandler(fresh.getJobType());
+                result = handler.execute(fresh);
+            } catch (Exception e) {
+                // Job threw an exception — mark as FAILED, let retry engine handle
+                log.warn("[{}] Job {} failed: {}", workerId, fresh.getId(), e.getMessage());
+
+                fresh.recordFailure(
+                    e.getMessage(),
+                    props.getRetry().getInitialDelayMs(),
+                    true
+                );
+                jobRepository.save(fresh);
+
+                log.info("[{}] Job {} → status={}, retryCount={}/{}",
+                    workerId, fresh.getId(), fresh.getStatus(),
+                    fresh.getRetryCount(), fresh.getMaxRetries());
+                return;
+            }
+
+            // ── STEP 3: COMPLETE ───────────────────────────────────────────────
+            fresh.complete(result);
             jobRepository.save(fresh);
 
-            log.info("[{}] Job {} → status={}, retryCount={}/{}",
-                workerId, fresh.getId(), fresh.getStatus(),
-                fresh.getRetryCount(), fresh.getMaxRetries());
-            return;
+            log.info("[{}] Job {} → COMPLETED in {}ms",
+                workerId, fresh.getId(),
+                fresh.getCompletedAt().toEpochMilli() - fresh.getStartedAt().toEpochMilli());
+        } finally {
+            org.slf4j.MDC.clear();
         }
-
-        // ── STEP 3: COMPLETE ───────────────────────────────────────────────
-        fresh.complete(result);
-        jobRepository.save(fresh);
-
-        log.info("[{}] Job {} → COMPLETED in {}ms",
-            workerId, fresh.getId(),
-            fresh.getCompletedAt().toEpochMilli() - fresh.getStartedAt().toEpochMilli());
     }
 
     // ── PUBLIC API ────────────────────────────────────────────────────────

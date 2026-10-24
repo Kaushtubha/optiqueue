@@ -1,6 +1,7 @@
 package com.optiqueue.controller;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -14,31 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * GlobalExceptionHandler — centralised exception → HTTP response mapping.
- *
- * @RestControllerAdvice = @ControllerAdvice + @ResponseBody.
- * Catches exceptions thrown by any @RestController in this application
- * and converts them to structured JSON error responses.
- *
- * WITHOUT this class:
- *   Spring Boot returns a "Whitelabel Error Page" HTML response for 500s,
- *   and a plain JSON error object (no field details) for validation failures.
- *   Not useful for API clients.
- *
- * WITH this class:
- *   All errors return a consistent JSON envelope with timestamp, status,
- *   error code, and a human-readable message. Clients can parse it reliably.
- *
- * INTERVIEW Q: "How do you handle validation errors globally in Spring Boot?"
- * A: @RestControllerAdvice with @ExceptionHandler(MethodArgumentNotValidException.class).
- *    Spring throws this when @Valid fails on a @RequestBody. Extract field errors
- *    from the BindingResult and return a 400 with per-field error messages.
- *    This keeps controller methods clean — no try-catch, no manual validation.
- */
 @RestControllerAdvice
-@Slf4j
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * Handles @Valid / @Validated failures on request bodies.

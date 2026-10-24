@@ -8,8 +8,8 @@ import com.optiqueue.service.JobService.CancelResult;
 import com.optiqueue.service.JobService.JobSubmitResult;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,38 +20,19 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * JobController — REST API entry point for OptiQueue.
- *
- * @RestController = @Controller + @ResponseBody:
- *   Every method return value is serialized to JSON automatically.
- *   No need for @ResponseBody on each method.
- *
- * @RequestMapping("/api/jobs"):
- *   All endpoints share this prefix. If we ever version the API
- *   (/api/v2/jobs), we change it in one place.
- *
- * CONTROLLER RESPONSIBILITY:
- *   ONLY: parse request, call service, map result to HTTP response.
- *   NEVER: business logic, direct DB access, retry decisions.
- *   Business logic belongs in JobService. This keeps controllers
- *   thin and testable via MockMvc without starting a full Spring context.
- *
- * INTERVIEW Q: "Why separate Controller, Service, Repository layers?"
- * A: Single Responsibility Principle. Each layer has one reason to change:
- *   - Controller changes if HTTP protocol changes (REST → GraphQL)
- *   - Service changes if business rules change
- *   - Repository changes if storage technology changes (Postgres → MongoDB)
- *   Mixing them creates a God class that breaks for any reason.
- */
 @RestController
 @RequestMapping("/api/jobs")
-@RequiredArgsConstructor
-@Slf4j
 public class JobController {
+
+    private static final Logger log = LoggerFactory.getLogger(JobController.class);
 
     private final JobService       jobService;
     private final RedisRateLimiter rateLimiter;
+
+    public JobController(JobService jobService, RedisRateLimiter rateLimiter) {
+        this.jobService = jobService;
+        this.rateLimiter = rateLimiter;
+    }
 
     // ── POST /api/jobs — Submit a job ─────────────────────────────────────
 

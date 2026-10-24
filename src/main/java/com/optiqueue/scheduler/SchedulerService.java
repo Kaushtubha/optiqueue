@@ -6,8 +6,8 @@ import com.optiqueue.domain.JobStatus;
 import com.optiqueue.redis.DistributedLockService;
 import com.optiqueue.repository.JobRepository;
 import com.optiqueue.worker.WorkerPool;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,48 +15,22 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * SchedulerService — the PRODUCER in the producer-consumer system.
- *
- * Responsibilities:
- *   1. Poll the DB for PENDING jobs on a fixed schedule
- *   2. Insert them into the in-memory JobPriorityQueue (sorted)
- *   3. Drain the priority queue into the JobBlockingQueue (bounded)
- *      which workers consume from
- *
- * WHY a two-stage buffer (PriorityQueue → BlockingQueue)?
- *   - DB gives us jobs in batches → PriorityQueue sorts them correctly
- *   - BlockingQueue is the hand-off point to workers → bounded to prevent
- *     the scheduler from overwhelming workers by loading the entire backlog
- *
- *   Without the PriorityQueue, we'd push jobs directly into the BlockingQueue
- *   in whatever order the DB returns them — no priority guarantee.
- *
- *   Without the BlockingQueue, workers would need to lock-compete on the
- *   PriorityQueue directly — harder to reason about.
- *
- * @Scheduled FIXED DELAY vs FIXED RATE:
- *   fixedDelay: N ms after the LAST execution finished.
- *   fixedRate:  N ms after the LAST execution STARTED (can overlap).
- *   WHY fixedDelay here? If the DB is slow and a poll takes 2s, using
- *   fixedRate=5000 means the next poll starts 3s later (5-2=3), potentially
- *   overlapping. fixedDelay=5000 always waits 5s after completion — safe.
- *
- * THREAD SAFETY:
- *   The @Scheduled method runs on Spring's TaskScheduler (single thread by default).
- *   The JobPriorityQueue is NOT thread-safe on its own (per Step 3 design).
- *   We protect it with a ReentrantLock in case multiple scheduler threads
- *   ever run (e.g., if Spring's task executor is configured with multiple threads).
- */
 @Service
-@Slf4j
-@RequiredArgsConstructor
 public class SchedulerService {
+
+    private static final Logger log = LoggerFactory.getLogger(SchedulerService.class);
 
     private final JobRepository         jobRepository;
     private final WorkerPool            workerPool;
     private final OptiQueueProperties   props;
     private final DistributedLockService lockService;
+
+    public SchedulerService(JobRepository jobRepository, WorkerPool workerPool, OptiQueueProperties props, DistributedLockService lockService) {
+        this.jobRepository = jobRepository;
+        this.workerPool = workerPool;
+        this.props = props;
+        this.lockService = lockService;
+    }
 
     /**
      * In-memory priority queue for sorting this poll's batch of jobs.

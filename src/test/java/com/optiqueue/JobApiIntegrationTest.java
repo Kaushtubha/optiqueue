@@ -48,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag("integration")
 class JobApiIntegrationTest {
 
     // ── CONTAINERS ────────────────────────────────────────────────────────

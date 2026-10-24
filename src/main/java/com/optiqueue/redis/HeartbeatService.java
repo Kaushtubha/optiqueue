@@ -1,61 +1,26 @@
 package com.optiqueue.redis;
 
 import com.optiqueue.config.OptiQueueProperties;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
 
-/**
- * HeartbeatService — worker liveness tracking via Redis TTL keys.
- *
- * Each worker node writes a heartbeat key to Redis every N seconds.
- * The key has a TTL of N × 3 (3 missed heartbeats = declared dead).
- *
- * KEY DESIGN:
- *   optiqueue:heartbeat:{workerId}  →  value: timestamp  TTL: heartbeatTtlMs
- *
- * WHY Redis TTL instead of DB timestamps?
- *   DB approach: worker writes UPDATE heartbeat_at = now() to a DB table every Ns.
- *     Failover check: SELECT * FROM workers WHERE heartbeat_at < now() - interval.
- *     Problem: requires a DB write every N seconds per worker (expensive), and
- *     a scheduled DB read to detect dead workers (more queries).
- *
- *   Redis TTL approach: worker writes to Redis every Ns.
- *     Failover check: EXISTS optiqueue:heartbeat:{workerId}
- *     If the key doesn't exist → worker is dead (TTL expired on its own).
- *     No explicit "mark as dead" step needed — TTL handles it automatically.
- *
- * TTL GUARANTEE:
- *   If the worker process crashes (kill -9, OOM, power loss), it stops
- *   sending heartbeats. Redis TTL expires after heartbeatTtlMs.
- *   The failover detector (Step 10) checks for missing heartbeat keys.
- *   MAX time to detect a dead worker: heartbeatTtlMs (e.g., 15 seconds).
- *
- * INTERVIEW Q: "Why not use Java's ScheduledExecutorService for heartbeats?"
- * A: The heartbeat WRITE can use either @Scheduled or ScheduledExecutorService —
- *    both work. The key difference is the READ side. Redis TTL auto-expires the
- *    key when the worker dies — no other process needs to actively mark it dead.
- *    With a DB + ScheduledExecutorService, you need an extra cleanup job.
- *    Redis gives you "auto-cleanup on death" for free via TTL.
- *
- * INTERVIEW Q: "What's the minimum heartbeat interval for safe failover detection?"
- *   The interval is a tradeoff:
- *   - Shorter interval → faster failure detection, more Redis writes
- *   - Longer interval → slower detection, fewer writes
- *   Common values: heartbeat every 5s, TTL = 15s (3x interval).
- *   3× gives 2 missed heartbeats grace before declaring death (handles GC pauses).
- */
 @Component
-@Slf4j
-@RequiredArgsConstructor
 public class HeartbeatService {
+
+    private static final Logger log = LoggerFactory.getLogger(HeartbeatService.class);
 
     private final StringRedisTemplate redisTemplate;
     private final OptiQueueProperties props;
+
+    public HeartbeatService(StringRedisTemplate redisTemplate, OptiQueueProperties props) {
+        this.redisTemplate = redisTemplate;
+        this.props = props;
+    }
 
     // Heartbeat key prefix
     private static final String HEARTBEAT_PREFIX = "optiqueue:heartbeat:";

@@ -1,6 +1,7 @@
 package com.optiqueue.worker.handler;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -11,8 +12,9 @@ import java.util.Map;
  * JobHandlerRegistry — discovers and routes jobs to the appropriate JobHandler.
  */
 @Component
-@Slf4j
 public class JobHandlerRegistry {
+
+    private static final Logger log = LoggerFactory.getLogger(JobHandlerRegistry.class);
 
     private final Map<String, JobHandler> handlers = new HashMap<>();
     private final JobHandler defaultHandler;

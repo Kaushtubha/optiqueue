@@ -4,7 +4,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -43,9 +42,13 @@ import java.util.Set;
  *   Spring's filter chain can call filters multiple times on internal forwards;
  *   OncePerRequestFilter prevents that.
  */
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Component
-@Slf4j
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiKeyAuthFilter.class);
 
     // Paths excluded from API key check
     private static final Set<String> EXCLUDED_PATHS = Set.of(
@@ -69,6 +72,8 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest  request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain         chain) throws ServletException, IOException {
+
+        String path = request.getRequestURI();
 
         // Only enforce API key authentication on /api/** endpoints (skip static web UI and actuator)
         if (!path.startsWith("/api") || isExcluded(path)) {

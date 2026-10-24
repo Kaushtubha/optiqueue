@@ -8,14 +8,13 @@
 @REM
 @REM Usage: .\mvnw.cmd [maven goals]
 @REM   e.g. .\mvnw.cmd package -DskipTests
-@REM        .\mvnw.cmd spring-boot:run
+@REM        .\mvnw.cmd test
 @REM ============================================================
 
-@IF "%__MVNW_ARG0_NAME__%"=="" (SET __MVNW_ARG0_NAME__=%~nx0)
-@SET __ MVNW_CMD__=%COMSPEC%
-@IF NOT "%COMSPEC%"=="" (SET __MVNW_CMD__="%COMSPEC%" /c)
+@SETLOCAL
 @SET __MVNW_PROJECT_BASEDIR__=%~dp0
-@SET __MVNW_LAUNCHER__=%__MVNW_PROJECT_BASEDIR__%.mvn\wrapper\maven-wrapper.jar
+@IF "%__MVNW_PROJECT_BASEDIR__:~-1%"=="\" SET __MVNW_PROJECT_BASEDIR__=%__MVNW_PROJECT_BASEDIR__:~0,-1%
+@SET __MVNW_LAUNCHER__=%__MVNW_PROJECT_BASEDIR__%\.mvn\wrapper\maven-wrapper.jar
 
 @REM Detect JAVA_HOME
 @IF NOT "%JAVA_HOME%"=="" (
@@ -25,19 +24,17 @@
 @SET JAVA_EXE=java.exe
 
 :OkJHome
-@IF NOT EXIST "%__MVNW_LAUNCHER__%"  GOTO :DownloadWrapper
+@IF NOT EXIST "%__MVNW_LAUNCHER__%" GOTO :DownloadWrapper
 @GOTO :RunWrapper
 
 :DownloadWrapper
-@echo Downloading Maven Wrapper...
-@"%JAVA_EXE%" -classpath "" ^
-  "-Dmaven.wrapper.properties=%__MVNW_PROJECT_BASEDIR__%.mvn\wrapper\maven-wrapper.properties" ^
-  org.apache.maven.wrapper.MavenWrapperMain %*
+@echo Downloading Maven Wrapper JAR via PowerShell...
+@powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://repo.maven.apache.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar' -OutFile '%__MVNW_LAUNCHER__%'"
+@IF NOT EXIST "%__MVNW_LAUNCHER__%" (
+  @echo Failed to download Maven Wrapper JAR. Please check your internet connection.
+  @exit /b 1
+)
 @GOTO :RunWrapper
 
 :RunWrapper
-@"%JAVA_EXE%" ^
-  -classpath "%__MVNW_LAUNCHER__%" ^
-  "-Dmaven.multiModuleProjectDirectory=%__MVNW_PROJECT_BASEDIR__%" ^
-  "-Dmaven.wrapper.properties=%__MVNW_PROJECT_BASEDIR__%.mvn\wrapper\maven-wrapper.properties" ^
-  org.apache.maven.wrapper.MavenWrapperMain %*
+@"%JAVA_EXE%" -classpath "%__MVNW_LAUNCHER__%" "-Dmaven.multiModuleProjectDirectory=%__MVNW_PROJECT_BASEDIR__%" "-Dmaven.wrapper.properties=%__MVNW_PROJECT_BASEDIR__%\.mvn\wrapper\maven-wrapper.properties" org.apache.maven.wrapper.MavenWrapperMain %*

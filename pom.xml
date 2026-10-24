@@ -27,6 +27,7 @@
   <properties>
     <!-- Java 21: LTS, virtual threads available (we use platform threads for clarity) -->
     <java.version>21</java.version>
+    <lombok.version>1.18.36</lombok.version>
     <!-- Testcontainers: spin up real Postgres/Redis in unit tests -->
     <testcontainers.version>1.19.7</testcontainers.version>
   </properties>
@@ -86,14 +87,6 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
 
-    <!-- ── DEV TOOLING ────────────────────────────────────────────── -->
-    <!-- Lombok: @Getter, @Setter, @Builder etc. reduce boilerplate.
-         optional=true means it's not transitive to dependents. -->
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <optional>true</optional>
-    </dependency>
 
     <!-- ── TESTING ────────────────────────────────────────────────── -->
     <!-- spring-boot-starter-test brings: JUnit 5, Mockito, AssertJ, MockMvc -->
@@ -129,20 +122,30 @@
 
   <build>
     <plugins>
+      <!-- Maven Compiler Plugin -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>21</release>
+        </configuration>
+      </plugin>
+
+      <!-- Maven Surefire Plugin with modern JVM options for testing -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <argLine>-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading</argLine>
+        </configuration>
+      </plugin>
+
       <!-- Spring Boot Maven plugin: packages the app as an executable fat-jar.
            The repackage goal rewrites the jar so `java -jar optiqueue.jar` works. -->
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
-        <configuration>
-          <!-- Tell the plugin to exclude Lombok from the fat-jar (compile-time only) -->
-          <excludes>
-            <exclude>
-              <groupId>org.projectlombok</groupId>
-              <artifactId>lombok</artifactId>
-            </exclude>
-          </excludes>
-        </configuration>
       </plugin>
     </plugins>
   </build>

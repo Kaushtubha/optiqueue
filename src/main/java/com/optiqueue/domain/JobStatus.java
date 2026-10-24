@@ -44,20 +44,23 @@ public enum JobStatus {
      */
     public static boolean isValidTransition(JobStatus current, JobStatus next) {
         return switch (current) {
-            // From PENDING: can be picked up, or cancelled
+            // From PENDING: can be picked up by a worker, or cancelled via API
             case PENDING      -> next == IN_PROGRESS || next == CANCELLED;
 
-            // From IN_PROGRESS: can succeed, fail, or be cancelled mid-flight
-            case IN_PROGRESS  -> next == COMPLETED || next == FAILED || next == CANCELLED;
+            // From IN_PROGRESS: can succeed, fail, be cancelled, or recovered to PENDING on worker crash
+            case IN_PROGRESS  -> next == COMPLETED || next == FAILED || next == CANCELLED || next == PENDING;
 
-            // From FAILED: retry engine decides — retry or move to DLQ
-            case FAILED       -> next == RETRYING || next == DEAD_LETTER;
+            // From FAILED: retry engine schedules retry, moves to DLQ, or user cancels
+            case FAILED       -> next == RETRYING || next == DEAD_LETTER || next == CANCELLED;
 
             // From RETRYING: job re-enters the queue as PENDING for next attempt
             case RETRYING     -> next == PENDING;
 
-            // Terminal states — no transitions out
-            case COMPLETED, DEAD_LETTER, CANCELLED -> false;
+            // From DEAD_LETTER: operator/admin can manually replay the job back to PENDING
+            case DEAD_LETTER  -> next == PENDING;
+
+            // Terminal states — cannot transition out
+            case COMPLETED, CANCELLED -> false;
         };
     }
 }

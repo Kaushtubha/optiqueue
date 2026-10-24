@@ -3,7 +3,8 @@ package com.optiqueue.worker.handler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.optiqueue.domain.Job;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -12,9 +13,9 @@ import java.util.UUID;
  * EmailJobHandler — processes transactional email dispatch jobs.
  */
 @Component
-@Slf4j
 public class EmailJobHandler implements JobHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(EmailJobHandler.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override

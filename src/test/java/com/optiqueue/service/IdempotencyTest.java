@@ -51,31 +51,15 @@ class IdempotencyTest {
     @Mock
     private JobRepository jobRepository;
 
-    @Mock
-    private OptiQueueProperties props;
+    private final OptiQueueProperties props = new OptiQueueProperties();
 
-    @Mock
-    private OptiQueueProperties.Retry retryProps;
-
-    @InjectMocks
     private JobService jobService;
 
     private static final String IDEMPOTENCY_KEY = "order-123-welcome-email";
 
     @BeforeEach
     void setUp() {
-        // lenient() allows these stubs to be unused by tests that find an existing job
-        // and return early before reaching the props.getRetry() call.
-        // Without lenient(), Mockito strict mode throws UnnecessaryStubbingException
-        // for tests like duplicateSubmissionReturnsExistingJob where the early-return
-        // path never calls props.
-        //
-        // INTERVIEW Q: "When should you use lenient stubbing?"
-        // A: When a @BeforeEach stub is legitimately needed by SOME tests but not ALL.
-        //    lenient() is not a blanket excuse to ignore flaky stubs — it should be
-        //    used deliberately. If NO test uses a stub, remove it.
-        lenient().when(props.getRetry()).thenReturn(retryProps);
-        lenient().when(retryProps.getMaxAttempts()).thenReturn(5);
+        jobService = new JobService(jobRepository, props);
     }
 
     // ── IDEMPOTENT RETURN ──────────────────────────────────────────────────

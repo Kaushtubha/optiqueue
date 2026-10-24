@@ -3,7 +3,8 @@ package com.optiqueue.worker.handler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.optiqueue.domain.Job;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -16,8 +17,9 @@ import java.time.Duration;
  * WebhookJobHandler — delivers asynchronous HTTP webhooks to external services.
  */
 @Component
-@Slf4j
 public class WebhookJobHandler implements JobHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(WebhookJobHandler.class);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()

@@ -1,67 +1,36 @@
 package com.optiqueue.redis;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-/**
- * DistributedLockService — advisory distributed lock using Redis SET NX PX.
- *
- * Used by SchedulerService to ensure only ONE scheduler node polls the DB
- * at a time in a multi-node deployment. Without this, two scheduler nodes
- * could concurrently fetch the same 8 PENDING jobs and submit them to their
- * respective local blocking queues — causing the same job to be executed twice.
- *
- * THE LOCK COMMAND:
- *   SET optiqueue:scheduler:lock {holderId} NX PX {ttlMs}
- *
- *   NX  = set only if key does Not eXist (atomic conditional set)
- *   PX  = set expiry in milliseconds
- *   {holderId} = unique value per node/thread (UUID) — used to verify ownership before release
- *
- *   This is a single atomic command. The old SETNX + EXPIRE two-step had a race:
- *   if the process crashed between SETNX and EXPIRE, the lock was held forever.
- *   SET NX PX eliminates this race — TTL is set atomically with the lock acquisition.
- *
- * FENCING TOKEN (production extension):
- *   In distributed systems, even with TTL you can have a "split-brain" problem:
- *   - Node A acquires lock, starts slow operation
- *   - Lock TTL expires (A was too slow)
- *   - Node B acquires lock, starts operation
- *   - Node A finishes, writes to DB — now both A and B wrote!
- *   Solution: use a monotonically increasing fencing token (e.g., Redis INCR).
- *   DB writes include the token; DB rejects writes with a stale token.
- *   This is the Redlock algorithm extension for strong consistency.
- *
- * INTERVIEW Q: "What is Redlock? When would you use it?"
- * A: Redlock is an algorithm for distributed locks across N independent Redis nodes
- *    (not replicas, not cluster — standalone instances). A lock is acquired by
- *    writing to a majority (N/2 + 1) of nodes within a time bound. This survives
- *    the failure of up to N/2 nodes. For a single Redis node, SET NX PX is sufficient.
- *    Redlock adds complexity — only use it when single-node Redis is insufficient.
- *
- * INTERVIEW Q: "Is a Redis-based distributed lock safe with Redis Sentinel?"
- * A: No — Redis Sentinel uses async replication. If the master crashes after acquiring
- *    the lock but before replicating to a replica, a new master is promoted without
- *    the lock key. Two nodes could acquire the lock simultaneously. For strong
- *    consistency, use Redlock (multiple Redis nodes) or a CP system like ZooKeeper.
- *    For our use case (scheduler coordination, not financial transactions), the
- *    single-node lock is acceptable — worst case is a duplicate DB poll, which
- *    the DB's PENDING status check handles gracefully.
- */
 @Component
-@Slf4j
-@RequiredArgsConstructor
 public class DistributedLockService {
+
+    private static final Logger log = LoggerFactory.getLogger(DistributedLockService.class);
 
     private final StringRedisTemplate redisTemplate;
 
+    public DistributedLockService(StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+
     private static final String SCHEDULER_LOCK_KEY = "optiqueue:scheduler:lock";
-    private static final long   DEFAULT_TTL_MS      = 10_000; // 10 seconds
+    public static final long DEFAULT_TTL_MS = 10000L;
+    private static final String UNLOCK_LUA_SCRIPT = """
+        if redis.call('get', KEYS[1]) == ARGV[1] then
+            return redis.call('del', KEYS[1])
+        else
+            return 0
+        end
+        """;
+
+    private static final org.springframework.data.redis.core.script.RedisScript<Long> UNLOCK_SCRIPT =
+        new org.springframework.data.redis.core.script.DefaultRedisScript<>(UNLOCK_LUA_SCRIPT, Long.class);
 
     // ── ACQUIRE ───────────────────────────────────────────────────────────
 
@@ -131,23 +100,7 @@ public class DistributedLockService {
      * @return true if lock was released, false if we didn't hold it
      */
     public boolean releaseSchedulerLock(String holderId) {
-        try {
-            String currentHolder = redisTemplate.opsForValue().get(SCHEDULER_LOCK_KEY);
-
-            if (holderId.equals(currentHolder)) {
-                redisTemplate.delete(SCHEDULER_LOCK_KEY);
-                log.debug("Scheduler lock released by: {}", holderId);
-                return true;
-            } else {
-                log.warn("Lock release attempted by {} but current holder is {} — lock expired?",
-                    holderId, currentHolder);
-                return false;
-            }
-
-        } catch (Exception e) {
-            log.warn("Redis lock release failed: {}", e.getMessage());
-            return false;
-        }
+        return releaseLock(SCHEDULER_LOCK_KEY, holderId);
     }
 
     // ── GENERIC LOCK (reusable for other resources) ───────────────────────
@@ -174,14 +127,23 @@ public class DistributedLockService {
         return new LockHandle(lockKey, holderId, acquired, this);
     }
 
-    void releaseLock(String lockKey, String holderId) {
+    boolean releaseLock(String lockKey, String holderId) {
         try {
-            String current = redisTemplate.opsForValue().get(lockKey);
-            if (holderId.equals(current)) {
-                redisTemplate.delete(lockKey);
+            Long result = redisTemplate.execute(
+                UNLOCK_SCRIPT,
+                java.util.Collections.singletonList(lockKey),
+                holderId
+            );
+            boolean released = result != null && result > 0;
+            if (released) {
+                log.debug("Distributed lock {} atomically released by {}", lockKey, holderId);
+            } else {
+                log.debug("Distributed lock {} not released by {} (lock expired or held by another node)", lockKey, holderId);
             }
+            return released;
         } catch (Exception e) {
-            log.warn("Lock release failed for key {}: {}", lockKey, e.getMessage());
+            log.warn("Atomic lock release failed for key {}: {}", lockKey, e.getMessage());
+            return false;
         }
     }
 

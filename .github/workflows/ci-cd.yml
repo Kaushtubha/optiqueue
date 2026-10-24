@@ -151,7 +151,7 @@ jobs:
     name: Deploy to Oracle Cloud ARM VM
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: github.ref == 'refs/heads/main' && secrets.ORACLE_VM_IP != ''
+    if: github.ref == 'refs/heads/main'
 
     environment:
       name: production
@@ -160,15 +160,18 @@ jobs:
       - name: Checkout code (for docker-compose.yml)
         uses: actions/checkout@v4
 
-      # INTERVIEW Q: "How do you deploy without exposing SSH keys in code?"
-      # GitHub Secrets: encrypted key-value store per repository.
-      # Set via: Settings → Secrets and variables → Actions → New repository secret
-      # Secrets are:
-      #   - Encrypted at rest (AES-256)
-      #   - Never exposed in logs (masked with ***)
-      #   - Available only to jobs in the same repo
-      #   - Not accessible to forked repo PRs (protection from supply chain attacks)
+      - name: Check deployment credentials
+        id: check-creds
+        run: |
+          if [ -z "${{ secrets.ORACLE_VM_IP }}" ]; then
+            echo "ORACLE_VM_IP secret not configured. Skipping SSH deployment."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy via SSH
+        if: steps.check-creds.outputs.skip != 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ORACLE_VM_IP }}
@@ -203,4 +206,5 @@ jobs:
         if: failure()
         run: |
           echo "Deployment failed! Check the logs above."
+
           # In production, add: curl -X POST $SLACK_WEBHOOK -d '{"text":"Deploy failed"}'

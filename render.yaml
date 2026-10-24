@@ -1,9 +1,16 @@
 # ═══════════════════════════════════════════════════════════════════
-# render.yaml — 1-Click Free Deployment Blueprint for Render.com
+# render.yaml — Safe Zero-Cost Deployment Blueprint for Render.com
+# ═══════════════════════════════════════════════════════════════════
+# COST SAFETY NOTICE:
+# Render's native managed PostgreSQL expires and is DELETED after 30 days
+# on the free tier. To guarantee ZERO COST with permanent data durability,
+# configure OptiQueue to use free persistent database providers:
+#   1. Database: Neon (https://neon.tech) — Free 0.5 GB Postgres (no card)
+#   2. Redis: Upstash (https://upstash.com) — Free 10k cmds/day Redis (no card)
 # ═══════════════════════════════════════════════════════════════════
 
 services:
-  # OptiQueue Main Web Application & Worker
+  # OptiQueue Main Web Application & Worker (Free Web Service)
   - type: web
     name: optiqueue-app
     env: docker
@@ -14,35 +21,20 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: SPRING_DATASOURCE_URL
-        fromDatabase:
-          name: optiqueue-db
-          property: connectionString
-      - key: SPRING_DATA_REDIS_HOST
-        fromService:
-          type: redis
-          name: optiqueue-redis
-          property: host
-      - key: SPRING_DATA_REDIS_PORT
-        fromService:
-          type: redis
-          name: optiqueue-redis
-          property: port
+      # Inject connection strings from your free Neon / Supabase database
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      # Inject connection strings from your free Upstash Redis instance
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASS
+        sync: false
       - key: SECURITY_API_KEYS
         generateValue: true
 
-databases:
-  # Managed PostgreSQL Database (Free Tier)
-  - name: optiqueue-db
-    plan: free
-    region: oregon
-    databaseName: optiqueue
-    user: optiqueue
-
-  # Managed Redis Instance (Free Tier)
-  - type: redis
-    name: optiqueue-redis
-    plan: free
-    region: oregon
-    maxmemoryPolicy: noeviction
-    ipAllowList: [] # internal access only

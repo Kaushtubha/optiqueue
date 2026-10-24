@@ -84,8 +84,11 @@ class JobApiIntegrationTest {
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
 
-        // Disable scheduling in integration tests to avoid background noise
-        registry.add("spring.task.scheduling.pool.size", () -> "0");
+        // Delay background scheduling scans during REST API integration tests to prevent race conditions
+        registry.add("scheduler.poll-interval-ms", () -> "3600000");
+        registry.add("retry.scan-interval-ms", () -> "3600000");
+        registry.add("retry.dlq-scan-interval-ms", () -> "3600000");
+        registry.add("failover.scan-interval-ms", () -> "3600000");
     }
 
     // ── AUTOWIRED BEANS ───────────────────────────────────────────────────

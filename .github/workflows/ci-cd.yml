@@ -204,7 +204,4 @@ jobs:
 
       - name: Notify on failure
         if: failure()
-        run: |
-          echo "Deployment failed! Check the logs above."
-
-          # In production, add: curl -X POST $SLACK_WEBHOOK -d '{"text":"Deploy failed"}'
+        run: echo "Deployment failed! Check the logs above."

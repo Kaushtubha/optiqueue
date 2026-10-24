@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OptiQueue Distributed Task Engine — Interview Handbook</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  @page {
+    size: A4;
+    margin: 18mm 16mm 18mm 16mm;
+    @bottom-center {
+      content: "Page " counter(page);
+      font-size: 9pt;
+      font-family: 'Inter', sans-serif;
+      color: #64748b;
+    }
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #0f172a;
+    line-height: 1.55;
+    font-size: 10pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  h1 {
+    font-size: 20pt;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    font-size: 11pt;
+    color: #0e7490;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .author-bar {
+    font-size: 9pt;
+    color: #64748b;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    font-size: 13.5pt;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 1.5px solid #0e7490;
+    padding-bottom: 4px;
+    margin-top: 22px;
+    margin-bottom: 10px;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 14px;
+    margin-bottom: 6px;
+    page-break-after: avoid;
+  }
+
+  p {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+
+  ul, ol {
+    margin-top: 4px;
+    margin-bottom: 8px;
+    padding-left: 20px;
+  }
+
+  li {
+    margin-bottom: 4px;
+  }
+
+  .concept-box {
+    background: #f8fafc;
+    border-left: 4px solid #0e7490;
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin: 10px 0;
+    page-break-inside: avoid;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .concept-title {
+    font-weight: 700;
+    color: #0e7490;
+    font-size: 10.5pt;
+    margin-bottom: 4px;
+  }
+
+  .interview-box {
+    background: #faf5ff;
+    border-left: 4px solid #6366f1;
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin: 12px 0;
+    page-break-inside: avoid;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .interview-question {
+    font-weight: 700;
+    color: #4338ca;
+    font-size: 10.5pt;
+    margin-bottom: 6px;
+  }
+
+  .formula {
+    background: #f1f5f9;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9pt;
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin: 6px 0;
+    display: inline-block;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5pt;
+    background: #f1f5f9;
+    padding: 2px 5px;
+    border-radius: 3px;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+  }
+
+  pre {
+    background: #0f172a;
+    color: #f8fafc;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt;
+    padding: 10px 14px;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.4;
+    page-break-inside: avoid;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 9pt;
+    page-break-inside: avoid;
+  }
+
+  th {
+    background: #0e7490;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 6px 10px;
+    text-align: left;
+  }
+
+  td {
+    border-bottom: 1px solid #e2e8f0;
+    padding: 6px 10px;
+  }
+
+  tr:nth-child(even) {
+    background: #f8fafc;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 7.5pt;
+    font-weight: 600;
+    border-radius: 4px;
+    background: #e0f2fe;
+    color: #0369a1;
+  }
+</style>
+</head>
+<body>
+
+<h1>OptiQueue: Distributed Task Scheduling & Execution Engine</h1>
+<div class="subtitle">System Architecture, First-Principles Technical Dictionary & Interview Masterclass</div>
+<div class="author-bar">
+  <strong>Author:</strong> Kaushtubha (Core Maintainer & Systems Architect) &nbsp;|&nbsp; 
+  <strong>Live Demo:</strong> https://optiqueue.onrender.com &nbsp;|&nbsp; 
+  <strong>Stack:</strong> Java 17, Spring Boot, Redis, PostgreSQL, Render, Neon, Upstash
+</div>
+
+<h2>1. Executive Overview & High-Level Architecture</h2>
+<p>
+  <strong>OptiQueue</strong> is a production-grade distributed task execution engine engineered to guarantee fault-tolerant, prioritized, at-least-once job execution across distributed worker nodes. It natively incorporates Earliest-Deadline-First (EDF) dynamic scheduling, atomic distributed leasing via Redis, transactional state transitions in PostgreSQL, exponential backoff with full decorrelated jitter, and automated supervisor-driven failover detection.
+</p>
+
+<h3>Core Subsystem Topology</h3>
+<ul>
+  <li><strong>Ingestion Tier:</strong> Spring Boot REST endpoints validate authorization via <code>X-API-Key</code>, enforce business-level <code>idempotencyKey</code> constraints, apply sliding-window rate limiting, and write immutable state to PostgreSQL.</li>
+  <li><strong>Coordination Tier:</strong> An in-memory concurrent Min-Heap priority queue sorted by EDF operates alongside Upstash Redis distributed locks (using atomic Lua scripts) to eliminate race conditions and double-processing.</li>
+  <li><strong>Execution Tier:</strong> Bounded worker thread pools consume jobs, route execution to registered domain handlers (<code>EMAIL_SEND</code>, <code>WEBHOOK_DISPATCH</code>, <code>REPORT_GEN</code>), and record telemetry.</li>
+  <li><strong>Supervisory Watchdog:</strong> The <code>FailoverDetector</code> and <code>HeartbeatService</code> constantly monitor cluster health; if a worker node crashes or network-partitions, orphaned tasks are automatically reassigned.</li>
+</ul>
+
+<h3>Architectural Trade-offs: Why Redis + PostgreSQL?</h3>
+<table>
+  <tr>
+    <th>System Component</th>
+    <th>Role in OptiQueue</th>
+    <th>Engineering Justification</th>
+  </tr>
+  <tr>
+    <td><strong>Neon PostgreSQL 16</strong></td>
+    <td>System of Record (ACID Ledger)</td>
+    <td>Crash resilience, immutable execution audit logs, optimistic locking versioning (fencing tokens), durable dead-letter storage.</td>
+  </tr>
+  <tr>
+    <td><strong>Upstash Redis 8.4</strong></td>
+    <td>Coordination & Fast Ephemeral State</td>
+    <td>Sub-millisecond distributed locks with atomic lease renewal, sliding-window rate limiting (Sorted Sets), worker heartbeat registry.</td>
+  </tr>
+  <tr>
+    <td><strong>Min-Heap Priority Queue</strong></td>
+    <td>In-Memory Dispatching Engine</td>
+    <td>O(log n) task insertion and O(1) peek priority dispatching based on SLA deadlines.</td>
+  </tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>2. First-Principles Technical Dictionary (Every Definition Explained)</h2>
+
+<div class="concept-box">
+  <div class="concept-title">1. Idempotency & Idempotency Key</div>
+  <p><strong>Definition:</strong> An operation is idempotent if executing it multiple times yields the exact same outcome and side-effects as executing it once: <code>f(f(x)) = f(x)</code>.</p>
+  <p><strong>OptiQueue Mechanism:</strong> Clients submit requests with a unique UUID <code>idempotencyKey</code>. PostgreSQL enforces a unique constraint on <code>idempotency_key</code>. If a duplicate network request arrives, OptiQueue catches the unique constraint violation and returns the existing job status without re-executing business side-effects.</p>
+</div>
+
+<div class="concept-box">
+  <div class="concept-title">2. Earliest-Deadline-First (EDF) Scheduling & Min-Heap</div>
+  <p><strong>Definition:</strong> EDF is an optimal dynamic priority scheduling algorithm where tasks with the earliest deadline are prioritized for CPU/worker allocation. A Min-Heap is a binary tree where each node is smaller than or equal to its children.</p>
+  <p><strong>OptiQueue Mechanism:</strong> <code>JobPriorityQueue.java</code> maintains an in-memory Min-Heap. The comparison function evaluates: <br>
+  <span class="formula">Score = (Priority &times; 10^12) + DeadlineEpochMillis</span><br>
+  This ensures high-priority jobs execute first, while tasks approaching SLA expiration preempt lower-priority background tasks.</p>
+</div>
+
+<div class="concept-box">
+  <div class="concept-title">3. Distributed Lock & Lease TTL</div>
+  <p><strong>Definition:</strong> Mutual exclusion across independent machines that do not share memory. A lease TTL (Time-To-Live) guarantees the lock is released if the holder crashes.</p>
+  <p><strong>OptiQueue Mechanism:</strong> <code>DistributedLockService.java</code> acquires locks via <code>SET key worker_uuid NX PX 30000</code>. Lock release is performed via an atomic Lua script that verifies the caller owns the UUID before deleting the key, preventing accidental unlocks.</p>
+</div>
+
+<div class="concept-box">
+  <div class="concept-title">4. Fencing Tokens & Split-Brain Mitigation</div>
+  <p><strong>Definition:</strong> A monotonically increasing token that prevents "zombie" workers (paused by Stop-the-World GC pauses) from committing writes after their lease expired.</p>
+  <p><strong>OptiQueue Mechanism:</strong> PostgreSQL uses optimistic locking: <code>UPDATE jobs SET status = 'COMPLETED' WHERE id = :id AND version = :fencingToken</code>. If another worker took over during a pause, the version incremented and the stale write is rejected.</p>
+</div>
+
+<div class="concept-box">
+  <div class="concept-title">5. Heartbeat & Watchdog Failover Detection</div>
+  <p><strong>Definition:</strong> A periodic ping sent by worker nodes to confirm liveness. A watchdog thread monitors heartbeats and triggers failover when nodes fail to report.</p>
+  <p><strong>OptiQueue Mechanism:</strong> <code>HeartbeatService.java</code> writes to Redis key <code>worker:heartbeat:{workerId}</code> with a 15s TTL every 5s. <code>FailoverDetector.java</code> sweeps every 10s for <code>IN_PROGRESS</code> tasks whose worker key is missing, resetting them to <code>PENDING</code> for other workers.</p>
+</div>
+
+<div class="concept-box">
+  <div class="concept-title">6. Exponential Backoff with Decorrelated Jitter</div>
+  <p><strong>Definition:</strong> An algorithmic retry strategy where delay grows exponentially with randomized noise to prevent the Thundering Herd Problem.</p>
+  <p><strong>Mathematical Formula:</strong> <br>
+  <span class="formula">t_backoff = min(t_max, t_base &times; 2^retryCount) + rand(0, jitter)</span><br>
+  <strong>OptiQueue Mechanism:</strong> <code>RetryEngine.java</code> recalculates <code>next_retry_at</code> and schedules the task back into the priority queue, avoiding resonance wave spikes against downstream systems.</p>
+</div>
+
+<div class="concept-box">
+  <div class="concept-title">7. Dead Letter Queue (DLQ) & Poison Pill Isolation</div>
+  <p><strong>Definition:</strong> A containment queue for malformed tasks (poison pills) that crash workers or exceed maximum retry thresholds (<code>maxRetries = 5</code>).</p>
+  <p><strong>OptiQueue Mechanism:</strong> When retries exhaust, jobs transition to <code>DEAD_LETTER</code>. The stack trace is saved in <code>last_error</code>, and the worker thread returns safely to the pool. Operators can inspect the payload and invoke <code>POST /api/jobs/dead-letter/{id}/retry</code> to replay the task.</p>
+</div>
+
+<div class="concept-box">
+  <div class="concept-title">8. Sliding Window Rate Limiting (Redis Sorted Sets)</div>
+  <p><strong>Definition:</strong> Rolling time window traffic throttling that eliminates the burst vulnerability of fixed-window algorithms.</p>
+  <p><strong>OptiQueue Mechanism:</strong> <code>RedisRateLimiter.java</code> uses Redis <code>ZSET</code>:
+  1. Remove expired entries: <code>ZREMRANGEBYSCORE key 0 (now - window)</code><br>
+  2. Count current elements: <code>ZCARD key</code><br>
+  3. If count &ge; limit, reject with HTTP 429; else <code>ZADD key now uuid</code> and allow request.</p>
+</div>
+
+<div class="page-break"></div>
+
+<h2>3. Distributed Systems Interview Masterclass (Q&A)</h2>
+
+<div class="interview-box">
+  <div class="interview-question">Q1: How does OptiQueue prevent two workers from picking up the exact same job concurrently?</div>
+  <p><strong>Answer:</strong> OptiQueue utilizes a multi-stage defense:</p>
+  <ol>
+    <li><strong>In-Memory Thread Safety:</strong> The <code>JobPriorityQueue</code> is guarded by a <code>ReentrantLock</code> ensuring only one consumer thread polls a job at a time.</li>
+    <li><strong>Distributed Mutual Exclusion:</strong> Before execution, the worker acquires an exclusive Redis lock on <code>lock:job:{jobId}</code> using an atomic <code>SET NX PX 30000</code>.</li>
+    <li><strong>Optimistic Versioning in PostgreSQL:</strong> State transition uses <code>UPDATE jobs SET status = 'IN_PROGRESS', version = version + 1 WHERE id = :id AND status = 'PENDING'</code>. If another worker already claimed it, the update affects 0 rows and the second worker drops the task.</li>
+  </ol>
+</div>
+
+<div class="interview-box">
+  <div class="interview-question">Q2: What happens if a worker crashes or encounters an Out-Of-Memory (OOM) error midway through execution?</div>
+  <p><strong>Answer:</strong></p>
+  <ol>
+    <li>The crashed worker abruptly stops sending heartbeats to Redis (<code>worker:heartbeat:{workerId}</code>).</li>
+    <li>Within 15 seconds, the Redis heartbeat key expires via TTL.</li>
+    <li>The <code>FailoverDetector</code> background thread detects an orphaned job in state <code>IN_PROGRESS</code> with no matching heartbeat.</li>
+    <li>The supervisor increments the retry counter, marks the job <code>PENDING</code>, logs the diagnostic error, and pushes the job back to the Min-Heap for an active worker to execute.</li>
+  </ol>
+</div>
+
+<div class="interview-box">
+  <div class="interview-question">Q3: Why is Jitter strictly required in Exponential Backoff?</div>
+  <p><strong>Answer:</strong> If an external service experiences an outage, hundreds of failed tasks without jitter would calculate identical retry delays (e.g., exactly 2s, 4s, 8s). All workers would retry simultaneously in synchronized bursts (<strong>Thundering Herd Problem</strong>), repeatedly crashing the recovering dependency. Adding random jitter disperses retries evenly across time, smoothing the load.</p>
+</div>
+
+<div class="interview-box">
+  <div class="interview-question">Q4: How does OptiQueue achieve Exactly-Once semantics?</div>
+  <p><strong>Answer:</strong> In distributed systems over real networks, physical exactly-once transmission is impossible. OptiQueue guarantees <strong>effectively exactly-once execution</strong> through <em>At-Least-Once Delivery</em> paired with <em>Idempotent Consumer Processing</em>. Every job has an <code>idempotencyKey</code> backed by a database unique constraint, and handlers verify idempotency states before dispatching side-effects.</p>
+</div>
+
+<div class="interview-box">
+  <div class="interview-question">Q5: Explain the Fencing Token problem in distributed locking and how OptiQueue mitigates it.</div>
+  <p><strong>Answer:</strong> If Worker A holds a 30s Redis lock and experiences a 35s JVM Stop-the-World garbage collection pause, its lock expires. Worker B claims the lock. Worker A awakens and writes to the DB unaware its lease lapsed. OptiQueue prevents this using PostgreSQL optimistic version numbers as <strong>fencing tokens</strong>. When Worker B claims the task, it increments the version from V1 to V2. When Worker A tries to commit using V1, the update fails.</p>
+</div>
+
+<div class="interview-box">
+  <div class="interview-question">Q6: How does OptiQueue isolate Poison Pills and prevent cascading worker pool death?</div>
+  <p><strong>Answer:</strong> A defensive <code>try-catch(Throwable)</code> barrier inside the worker consumer loop intercepts both checked exceptions and fatal JVM errors. Unrecoverable failures increment the retry count; once <code>maxRetries = 5</code> is exceeded, the job is evicted to <code>DEAD_LETTER</code> with full stack trace capture. The worker thread is returned unharmed to the pool.</p>
+</div>
+
+<div class="interview-box">
+  <div class="interview-question">Q7: Walk through what happens under the hood when "Launch Demo Workload" is clicked.</div>
+  <p><strong>Answer:</strong></p>
+  <ol>
+    <li>The dashboard calls <code>POST /api/jobs/demo-batch</code> with the authorized <code>X-API-Key</code>.</li>
+    <li>The controller generates 10 heterogeneous tasks (4 Email, 3 Webhook, 2 Report Gen, 1 intentional failure DLQ test) with distinct priorities (P1-P5).</li>
+    <li>Jobs are durably saved to Neon PostgreSQL in state <code>PENDING</code> and queued in the Min-Heap.</li>
+    <li>Worker threads lease tasks, acquire Redis locks, execute business handlers, and record execution results.</li>
+    <li>9 tasks complete; 1 task retries with jitter and quarantines into the Dead Letter Queue. The dashboard animates the metrics live in real time.</li>
+  </ol>
+</div>
+
+<div class="page-break"></div>
+
+<h2>4. Mathematical Formulas & Whiteboard Reference</h2>
+<table>
+  <tr>
+    <th>Formula Name</th>
+    <th>Mathematical Expression</th>
+    <th>Application in OptiQueue</th>
+  </tr>
+  <tr>
+    <td><strong>Little's Law</strong></td>
+    <td><code>L = &lambda; &times; W</code></td>
+    <td>Determines worker pool sizing: Concurrency (L) = Ingestion Rate (&lambda;) &times; Average Service Time (W).</td>
+  </tr>
+  <tr>
+    <td><strong>Amdahl's Law</strong></td>
+    <td><code>S(N) = 1 / ((1 - P) + (P / N))</code></td>
+    <td>Calculates theoretical speedup with N parallel worker threads given parallelizable fraction P.</td>
+  </tr>
+  <tr>
+    <td><strong>Decorrelated Jitter</strong></td>
+    <td><code>Delay = rand(0, min(MaxDelay, Base &times; 2^attempt))</code></td>
+    <td>Used in <code>RetryEngine.java</code> to disperse retries across time and prevent Thundering Herd spikes.</td>
+  </tr>
+  <tr>
+    <td><strong>Min-Heap Priority Score</strong></td>
+    <td><code>Score = (Priority &times; 10^12) + DeadlineMillis</code></td>
+    <td>Orders tasks in <code>JobPriorityQueue.java</code> by priority and earliest SLA deadline.</td>
+  </tr>
+</table>
+
+<h2>5. Production Deployment Telemetry & Architecture Limits</h2>
+<ul>
+  <li><strong>Live Web App:</strong> <a href="https://optiqueue.onrender.com">https://optiqueue.onrender.com</a></li>
+  <li><strong>Compute:</strong> Render Web Service (Spring Boot 3 / OpenJDK 17 Docker container).</li>
+  <li><strong>Relational DB:</strong> Neon Serverless PostgreSQL 16 (HikariCP connection pool, max-connections: 10).</li>
+  <li><strong>Distributed Cache:</strong> Upstash Serverless Redis 8.4 (Sub-millisecond latency, distributed locks, rate limiter).</li>
+  <li><strong>Total Infrastructure Cost:</strong> <strong>$0.00 / month (100% Free Tier Architecture)</strong>.</li>
+</ul>
+
+<div style="margin-top: 30px; text-align: center; color: #64748b; font-size: 8.5pt;">
+  &mdash; OptiQueue Distributed Task Scheduling & Execution Engine &mdash;<br>
+  Prepared for Technical & System Design Interviews &bull; 2026
+</div>
+
+</body>
+</html>

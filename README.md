@@ -121,78 +121,78 @@ The following diagram illustrates the component interactions, transactional boun
 
 ```mermaid
 graph TB
-    subgraph ClientLayer["Client & Operations Layer"]
-        Client[External API Client / Microservice]
-        Dashboard[Embedded Operations Dashboard]
+    subgraph ClientLayer["Client and Operations Layer"]
+        Client["External API Client"]
+        Dashboard["Embedded Operations Dashboard"]
     end
 
-    subgraph IngressLayer["Ingress & Security"]
-        AuthFilter[ApiKeyAuthFilter<br/>X-API-Key Validation]
-        RateLimiter[RedisRateLimiter<br/>Atomic Lua Script INCR+EXPIRE]
-        JobController[JobController<br/>REST Endpoints]
+    subgraph IngressLayer["Ingress and Security"]
+        AuthFilter["ApiKeyAuthFilter<br/>X-API-Key Validation"]
+        RateLimiter["RedisRateLimiter<br/>Atomic Lua Script"]
+        JobController["JobController<br/>REST Endpoints"]
     end
 
     subgraph PersistenceLayer["Durable Storage"]
-        Postgres[(PostgreSQL 16<br/>jobs table + Flyway Migrations)]
+        Postgres[("PostgreSQL 16<br/>jobs table")]
     end
 
-    subgraph CoordinationLayer["Distributed Coordination (Redis 7)"]
-        LockService[DistributedLockService<br/>SET NX PX + Atomic Lua Release]
-        HeartbeatSvc[HeartbeatService<br/>Worker TTL Keys: 15s]
+    subgraph CoordinationLayer["Distributed Coordination (Redis 8.4)"]
+        LockService["DistributedLockService<br/>SET NX PX and Lua Release"]
+        HeartbeatSvc["HeartbeatService<br/>Worker TTL Keys"]
     end
 
     subgraph SchedulerLayer["Scheduling Engine"]
-        Scheduler[SchedulerService<br/>Poller & Priority Dispatcher]
-        PriorityQueue[JobPriorityQueue<br/>Custom Min-Heap: Priority + EDF]
-        BlockingQueue[JobBlockingQueue<br/>Thread-Safe Bounded Buffer]
+        Scheduler["SchedulerService<br/>Poller and Dispatcher"]
+        PriorityQueue["JobPriorityQueue<br/>Min-Heap (Priority + EDF)"]
+        BlockingQueue["JobBlockingQueue<br/>Bounded Buffer"]
     end
 
     subgraph WorkerLayer["Worker Execution Subsystem"]
-        WorkerPool[WorkerPool<br/>Fixed Thread Pool + MDC Logging]
-        HandlerRegistry[JobHandlerRegistry<br/>Strategy Pattern Router]
-        EmailHandler[EmailJobHandler]
-        WebhookHandler[WebhookJobHandler]
-        ReportHandler[ReportGenJobHandler]
-        DefaultHandler[DefaultJobHandler]
+        WorkerPool["WorkerPool<br/>Fixed Daemon Thread Pool"]
+        HandlerRegistry["JobHandlerRegistry<br/>Strategy Router"]
+        EmailHandler["EmailJobHandler"]
+        WebhookHandler["WebhookJobHandler"]
+        ReportHandler["ReportGenJobHandler"]
+        DefaultHandler["DefaultJobHandler"]
     end
 
     subgraph RecoveryLayer["Self-Healing Subsystems"]
-        Failover[FailoverDetector<br/>Detects Dead Workers via Redis TTL]
-        RetryEngine[RetryEngine<br/>Equal Jitter Backoff & DLQ Safety Net]
+        Failover["FailoverDetector<br/>Dead Worker Recovery"]
+        RetryEngine["RetryEngine<br/>Equal Jitter Backoff"]
     end
 
     %% Ingress Flow
-    Client -->|HTTP POST/GET/DELETE| AuthFilter
-    Dashboard -->|Polling HTTP Requests| AuthFilter
+    Client -->|HTTP Requests| AuthFilter
+    Dashboard -->|HTTP Polling| AuthFilter
     AuthFilter --> RateLimiter
     RateLimiter -->|Pass| JobController
 
     %% Persistence Flow
-    JobController -->|INSERT / SELECT / UPDATE| Postgres
+    JobController -->|Persist Job| Postgres
 
     %% Scheduling Flow
-    Scheduler -->|Acquire Advisory Lock| LockService
-    Scheduler -->|Batch Poll PENDING Jobs| Postgres
-    Scheduler -->|Insert Batch| PriorityQueue
-    PriorityQueue -->|Drain Top Priority| BlockingQueue
+    Scheduler -->|Acquire Lock| LockService
+    Scheduler -->|Poll Batch| Postgres
+    Scheduler -->|Push Batch| PriorityQueue
+    PriorityQueue -->|Drain Heap| BlockingQueue
 
     %% Worker Execution Flow
     WorkerPool -->|take| BlockingQueue
-    WorkerPool -->|Heartbeat Ping every 5s| HeartbeatSvc
+    WorkerPool -->|Heartbeat Ping 5s| HeartbeatSvc
     WorkerPool -->|Route by jobType| HandlerRegistry
     HandlerRegistry --> EmailHandler
     HandlerRegistry --> WebhookHandler
     HandlerRegistry --> ReportHandler
     HandlerRegistry --> DefaultHandler
-    WorkerPool -->|UPDATE status = COMPLETED/FAILED| Postgres
+    WorkerPool -->|Update Status| Postgres
 
     %% Background Recovery
-    Failover -->|Scan Stale IN_PROGRESS| Postgres
-    Failover -->|EXISTS key| HeartbeatSvc
+    Failover -->|Scan Stale Jobs| Postgres
+    Failover -->|Check Redis TTL| HeartbeatSvc
     Failover -->|Reset to PENDING| Postgres
 
-    RetryEngine -->|Scan Due FAILED Jobs| Postgres
-    RetryEngine -->|Reset to PENDING / Move to DLQ| Postgres
+    RetryEngine -->|Scan Due Retries| Postgres
+    RetryEngine -->|Re-queue Job| Postgres
 ```
 
 ---
@@ -266,7 +266,7 @@ The following sequence depicts the end-to-end processing of a successfully submi
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as API Client / UI
+    actor Client as API Client or UI
     participant Ctrl as JobController
     participant Svc as JobService
     participant DB as PostgreSQL
@@ -280,11 +280,11 @@ sequenceDiagram
     Client->>Ctrl: POST /api/jobs (JobRequest)
     Ctrl->>Svc: submitJob(request)
     Svc->>DB: Check idempotency_key
-    alt Key exists
+    alt Idempotency Key exists
         Svc-->>Ctrl: Return existing Job (200 OK)
         Ctrl-->>Client: 200 OK (JobResponse)
-    else Key unique
-        Svc->>DB: INSERT INTO jobs (status='PENDING')
+    else Idempotency Key is unique
+        Svc->>DB: INSERT INTO jobs (status=PENDING)
         Svc-->>Ctrl: Return new Job (201 Created)
         Ctrl-->>Client: 201 Created (JobResponse)
     end
@@ -292,22 +292,22 @@ sequenceDiagram
     Note over Sch,Lock: Scheduled Poll Cycle
     Sch->>Lock: tryAcquireSchedulerLock()
     Lock-->>Sch: Lock Granted (8s TTL)
-    Sch->>DB: SELECT PENDING jobs (LIMIT 8)
-    DB-->>Sch: List<Job>
-    loop For each job
-        Sch->>PQ: insert(job) [Min-Heap]
+    Sch->>DB: SELECT PENDING jobs (batch limit)
+    DB-->>Sch: Return pending job batch
+    loop For each job in batch
+        Sch->>PQ: insert into Min-Heap
     end
     loop Drain Heap
-        PQ->>BQ: put(job) [Bounded Buffer]
+        PQ->>BQ: put into Bounded Buffer
     end
-    Sch->>Lock: releaseSchedulerLock() via Lua
+    Sch->>Lock: releaseSchedulerLock via Lua
 
     Note over WP,Hnd: Asynchronous Consumer
-    WP->>BQ: take() [Worker Thread]
-    WP->>DB: UPDATE status='IN_PROGRESS', workerId
+    WP->>BQ: take next job (Worker Thread)
+    WP->>DB: UPDATE status to IN_PROGRESS
     WP->>Hnd: execute(job)
     Hnd-->>WP: Execution Result JSON
-    WP->>DB: UPDATE status='COMPLETED', result, completedAt
+    WP->>DB: UPDATE status to COMPLETED
 ```
 
 ### Failure, Exponential Backoff & Dead-Letter Sequence Flow
@@ -321,31 +321,31 @@ sequenceDiagram
     participant Job as Job Entity
     participant DB as PostgreSQL
     participant Retry as RetryEngine
-    participant Client as Operator / Dashboard
+    participant Client as Operator or Dashboard
 
     WP->>Hnd: execute(job)
-    Hnd-->>WP: Throws Exception (e.g. Network Timeout)
-    WP->>Job: recordFailure(errorMessage, initialDelayMs, useJitter=true)
+    Hnd-->>WP: Throws Exception (Network Timeout)
+    WP->>Job: recordFailure(errorMessage, initialDelayMs, jitter=true)
     
-    alt retryCount < maxRetries
-        Job->>Job: delayMs = half + random(0, half)
-        Job->>Job: nextRetryAt = now() + delayMs
-        Job->>Job: transitionTo(FAILED)
-        WP->>DB: UPDATE jobs (status='FAILED', next_retry_at, retry_count++)
+    alt Retries remaining (retryCount below maxRetries)
+        Job->>Job: Calculate equal jitter delay
+        Job->>Job: Set next_retry_at timestamp
+        Job->>Job: Transition status to FAILED
+        WP->>DB: UPDATE status to FAILED with next_retry_at
         
         Note over Retry,DB: Polling Loop (every 5s)
-        Retry->>DB: SELECT WHERE status='FAILED' AND next_retry_at <= now()
-        DB-->>Retry: List<Job> ready for retry
-        Retry->>DB: UPDATE status='RETRYING' -> status='PENDING'
+        Retry->>DB: Query due failed jobs
+        DB-->>Retry: Return due failed jobs
+        Retry->>DB: Transition status to RETRYING then PENDING
         Note over DB: Job picked up on next Scheduler cycle
-    else retryCount >= maxRetries
-        Job->>Job: transitionTo(FAILED) -> transitionTo(DEAD_LETTER)
-        Job->>Job: isDeadLetter = true
-        WP->>DB: UPDATE jobs (status='DEAD_LETTER', is_dead_letter=true)
+    else Max retries exhausted
+        Job->>Job: Transition status to DEAD_LETTER
+        Job->>Job: Set is_dead_letter to true
+        WP->>DB: UPDATE status to DEAD_LETTER
         
         Note over Client,DB: Manual DLQ Replay
         Client->>DB: POST /api/jobs/dead-letter/{id}/retry
-        DB->>DB: UPDATE status='PENDING', retry_count=0, is_dead_letter=false
+        DB->>DB: Reset status to PENDING and retryCount to 0
         Note over DB: Job re-enters PENDING scheduling
     end
 ```
@@ -363,24 +363,24 @@ PostgreSQL is managed through **Flyway migrations** ([`V1__create_jobs_table.sql
 ```mermaid
 erDiagram
     JOBS {
-        UUID id PK "Unique Job Identifier"
-        VARCHAR job_type "Job handler classification"
-        TEXT payload "JSON parameters"
-        VARCHAR status "PENDING, IN_PROGRESS, COMPLETED, FAILED, RETRYING, DEAD_LETTER, CANCELLED"
-        INTEGER priority "1 (Critical) to 10 (Background)"
-        TIMESTAMP deadline "Nullable EDF tie-breaker"
-        INTEGER retry_count "Current attempt count"
-        INTEGER max_retries "Maximum allowed retry attempts"
-        TIMESTAMP next_retry_at "Backoff target timestamp"
-        TEXT last_error "Exception message from last failure"
-        BOOLEAN is_dead_letter "DLQ index flag"
-        VARCHAR assigned_worker_id "Worker instance identifier"
-        VARCHAR idempotency_key UK "Client deduplication token"
-        TEXT result "Execution output payload"
-        TIMESTAMP created_at "Audit creation time"
-        TIMESTAMP updated_at "Audit modification time (DB Triggered)"
-        TIMESTAMP started_at "Processing start timestamp"
-        TIMESTAMP completed_at "Terminal completion timestamp"
+        uuid id PK "Unique Job Identifier"
+        string job_type "Job handler classification"
+        string payload "JSON input parameters"
+        string status "Current lifecycle state"
+        int priority "Priority level 1 to 10"
+        datetime deadline "Nullable EDF tie breaker"
+        int retry_count "Current attempt count"
+        int max_retries "Maximum allowed retry attempts"
+        datetime next_retry_at "Backoff target timestamp"
+        string last_error "Exception message from last failure"
+        boolean is_dead_letter "DLQ index flag"
+        string assigned_worker_id "Worker instance identifier"
+        string idempotency_key UK "Client deduplication token"
+        string result "Execution output payload"
+        datetime created_at "Audit creation time"
+        datetime updated_at "Audit modification time"
+        datetime started_at "Processing start timestamp"
+        datetime completed_at "Terminal completion timestamp"
     }
 ```
 

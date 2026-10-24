@@ -233,6 +233,50 @@ public class JobController {
         return ResponseEntity.ok(jobService.getRecentJobs());
     }
 
+    // ── POST /api/jobs/demo-batch — Workload Generator ────────────────────
+
+    /**
+     * Generates a live realistic batch of 10 background tasks across different priority tiers
+     * and job handlers (EMAIL_SEND, WEBHOOK_DISPATCH, REPORT_GEN) for instant portfolio evaluation.
+     */
+    @PostMapping("/demo-batch")
+    public ResponseEntity<Map<String, Object>> submitDemoBatch() {
+        List<JobRequest> batch = List.of(
+            new JobRequest("demo-email-" + UUID.randomUUID(), "EMAIL_SEND",
+                "{\"to\":\"alex.recruiter@techcorp.com\",\"subject\":\"Engineering Interview Confirmation\",\"templateId\":\"welcome_v2\"}", 1, null, 5),
+            new JobRequest("demo-webhook-" + UUID.randomUUID(), "WEBHOOK_DISPATCH",
+                "{\"url\":\"https://httpbin.org/post\",\"event\":\"payment.succeeded\",\"amount\":24900,\"currency\":\"USD\"}", 2, null, 5),
+            new JobRequest("demo-report-" + UUID.randomUUID(), "REPORT_GEN",
+                "{\"reportType\":\"MONTHLY_REVENUE_AGGREGATE\",\"format\":\"PDF\",\"targetQuarter\":\"Q4-2026\"}", 2, null, 3),
+            new JobRequest("demo-email-" + UUID.randomUUID(), "EMAIL_SEND",
+                "{\"to\":\"billing@enterprise-client.io\",\"subject\":\"Monthly Invoice Receipt #INV-9921\",\"amount\":4999.00}", 3, null, 5),
+            new JobRequest("demo-webhook-" + UUID.randomUUID(), "WEBHOOK_DISPATCH",
+                "{\"url\":\"https://httpbin.org/post\",\"event\":\"order.fulfilled\",\"orderId\":\"ORD-88123\"}", 3, null, 5),
+            new JobRequest("demo-report-" + UUID.randomUUID(), "REPORT_GEN",
+                "{\"reportType\":\"USER_RETENTION_COHORT\",\"format\":\"CSV\",\"dateRange\":\"Last 90 Days\"}", 4, null, 3),
+            new JobRequest("demo-email-" + UUID.randomUUID(), "EMAIL_SEND",
+                "{\"to\":\"security-team@platform.org\",\"subject\":\"Security Alert: New Worker Node Registered\",\"nodeId\":\"worker-arm64-node2\"}", 1, null, 5),
+            new JobRequest("demo-webhook-" + UUID.randomUUID(), "WEBHOOK_DISPATCH",
+                "{\"url\":\"https://httpbin.org/post\",\"event\":\"incident.resolved\",\"incidentId\":\"INC-4029\"}", 2, null, 5),
+            new JobRequest("demo-report-" + UUID.randomUUID(), "REPORT_GEN",
+                "{\"reportType\":\"DATABASE_INDEX_PERFORMANCE_AUDIT\",\"format\":\"JSON\",\"tables\":[\"jobs\"]}", 5, null, 3),
+            new JobRequest("demo-retry-" + UUID.randomUUID(), "WEBHOOK_DISPATCH",
+                "{\"url\":\"https://invalid-nonexistent-domain-404.org/webhook\",\"event\":\"test.retry.dlq\"}", 1, null, 2)
+        );
+
+        int submitted = 0;
+        for (JobRequest req : batch) {
+            jobService.submitJob(req);
+            submitted++;
+        }
+
+        return ResponseEntity.ok(Map.of(
+            "status", "SUCCESS",
+            "message", "Dispatched " + submitted + " real distributed tasks across worker threads",
+            "submittedCount", submitted
+        ));
+    }
+
     // ── GET /api/jobs?status=PENDING — List by status ─────────────────────
 
     /**

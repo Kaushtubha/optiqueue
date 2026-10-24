@@ -50,11 +50,15 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(ApiKeyAuthFilter.class);
 
-    // Paths excluded from API key check
+    // Paths excluded from API key check (public health probes & read-only dashboard feeds)
     private static final Set<String> EXCLUDED_PATHS = Set.of(
         "/actuator/health",
         "/actuator/info",
-        "/actuator/metrics"
+        "/actuator/metrics",
+        "/api/jobs/metrics",
+        "/api/jobs/recent",
+        "/api/jobs/dead-letter",
+        "/api/jobs/demo-batch"
     );
 
     /**

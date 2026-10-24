@@ -5,6 +5,12 @@
 </p>
 
 <p align="center">
+  <a href="https://optiqueue.onrender.com">
+    <img src="https://img.shields.io/badge/Live%20Demo-Available-success?style=for-the-badge&logo=render" alt="Live Demo">
+  </a>
+</p>
+
+<p align="center">
   <a href="https://github.com/Kaushtubha/optiqueue/actions/workflows/ci-cd.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/Kaushtubha/optiqueue/ci-cd.yml?branch=main&style=flat-square&label=CI%2FCD" alt="CI/CD Status">
   </a>
@@ -23,6 +29,10 @@
   <a href="https://www.docker.com/">
     <img src="https://img.shields.io/badge/Docker-Multi--Arch-2496ED?style=flat-square&logo=docker" alt="Docker">
   </a>
+</p>
+
+<p align="center">
+  <strong>Live Demo:</strong> <a href="https://optiqueue.onrender.com">https://optiqueue.onrender.com</a>
 </p>
 
 ---

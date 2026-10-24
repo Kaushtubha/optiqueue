@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://optiqueue.onrender.com">
-    <img src="https://img.shields.io/badge/Live%20Demo-Available-success?style=for-the-badge&logo=render" alt="Live Demo">
+    <img src="https://img.shields.io/badge/Live%20Demo-optiqueue.onrender.com-success?style=for-the-badge&logo=render" alt="Live Demo">
   </a>
 </p>
 
@@ -24,16 +24,16 @@
     <img src="https://img.shields.io/badge/PostgreSQL-16-blue?style=flat-square&logo=postgresql" alt="PostgreSQL 16">
   </a>
   <a href="https://redis.io/">
-    <img src="https://img.shields.io/badge/Redis-7-red?style=flat-square&logo=redis" alt="Redis 7">
+    <img src="https://img.shields.io/badge/Redis-8.4%20(Upstash)-red?style=flat-square&logo=redis" alt="Redis 8.4">
   </a>
   <a href="https://www.docker.com/">
     <img src="https://img.shields.io/badge/Docker-Multi--Arch-2496ED?style=flat-square&logo=docker" alt="Docker">
   </a>
 </p>
 
-<p align="center">
-  <strong>Live Demo:</strong> <a href="https://optiqueue.onrender.com">https://optiqueue.onrender.com</a>
-</p>
+> [!TIP]
+> **🚀 Live Interactive Demo**: Visit **[https://optiqueue.onrender.com](https://optiqueue.onrender.com)** to explore the real-time operations dashboard. Click **`⚡ Launch Demo Workload`** to dispatch 10 real distributed tasks and watch workers process them live!
+
 
 ---
 
@@ -201,15 +201,17 @@ graph TB
 
 OptiQueue includes a zero-dependency, real-time glassmorphism operations dashboard served directly by the embedded web container:
 
-- **Serving Path**: `http://localhost:8080/` (mapped to `src/main/resources/static/index.html`).
-- **Frontend Architecture**: Written in pure semantic HTML5, modern CSS3 variables with glassmorphism styling, and vanilla JavaScript (ES6+). Zero external bundlers, node modules, or frontend framework dependencies.
-- **Live Metric Polling**: Queries `GET /api/jobs/metrics` every 3 seconds to update real-time KPI cards:
+- **Live Cloud URL**: **[https://optiqueue.onrender.com/](https://optiqueue.onrender.com/)**
+- **Local URL**: `http://localhost:8080/` (mapped to `src/main/resources/static/index.html`).
+- **Frontend Architecture**: Written in semantic HTML5, CSS3 glassmorphism, and vanilla ES6+ JavaScript. Zero external NPM or framework overhead.
+- **⚡ Instant Demo Workload**: One-click **`⚡ Launch Demo Workload`** button dispatches 10 real distributed jobs (`EMAIL_SEND`, `WEBHOOK_DISPATCH`, `REPORT_GEN`, and a DLQ retry test) to immediately demonstrate the worker cluster in action.
+- **🔍 Interactive Job Inspector**: Click on any row in the activity table to open a detailed modal with the complete JSON input payload and actual execution result stored in PostgreSQL.
+- **Live Metric Polling**: Automatically refreshes every 3 seconds via `/api/jobs/metrics`:
   - *Total Jobs Submitted*
   - *Pending Jobs (In Queue)*
   - *In-Progress (Active Workers)*
   - *Completed Jobs*
   - *Dead Letter Queue (DLQ)*
-- **Interactive Job Submission Modal**: Pre-loaded with JSON schema templates for `EMAIL_SEND`, `WEBHOOK_DISPATCH`, `REPORT_GEN`, and custom jobs with client-side priority selection (1 to 5).
 - **Dead Letter Queue Management**: Dedicated DLQ view with one-click **↻ Replay** calling `POST /api/jobs/dead-letter/{id}/retry`.
 - **Cancellation Controls**: Instant cancellation of active or pending jobs directly from the activity feed.
 
@@ -435,23 +437,33 @@ All `/api/**` endpoints require authentication via the `X-API-Key` header when `
 | Method | Endpoint | Description | Auth Required | Success Response | Errors |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/api/jobs` | Submit a new background job | Yes | `201 Created` / `200 OK` | `400`, `401`, `429` |
+| `POST` | `/api/jobs/demo-batch` | Dispatch 10 realistic jobs for instant cluster evaluation | Public / UI | `200 OK` | `500` |
 | `GET` | `/api/jobs/{id}` | Retrieve job details and status | Yes | `200 OK` | `401`, `404` |
 | `GET` | `/api/jobs/{id}/result`| Retrieve completed execution output | Yes | `200 OK` / `204 No Content` | `401`, `404` |
 | `DELETE`| `/api/jobs/{id}` | Cancel pending or queued job | Yes | `200 OK` | `401`, `404`, `409` |
 | `GET` | `/api/jobs` | Query jobs by `status` or `idempotencyKey` | Yes | `200 OK` | `401`, `404` |
-| `GET` | `/api/jobs/recent` | Retrieve 50 latest jobs for feed | Yes | `200 OK` | `401` |
-| `GET` | `/api/jobs/metrics`| Retrieve real-time queue breakdown | Yes | `200 OK` | `401` |
-| `GET` | `/api/jobs/dead-letter` | List all dead-lettered jobs | Yes | `200 OK` | `401` |
+| `GET` | `/api/jobs/recent` | Retrieve 50 latest jobs for feed | Public / UI | `200 OK` | - |
+| `GET` | `/api/jobs/metrics`| Retrieve real-time queue breakdown | Public / UI | `200 OK` | - |
+| `GET` | `/api/jobs/dead-letter` | List all dead-lettered jobs | Public / UI | `200 OK` | - |
 | `POST` | `/api/jobs/dead-letter/{id}/retry` | Replay dead-letter job to `PENDING` | Yes | `200 OK` | `401`, `404` |
 | `GET` | `/actuator/health` | Container and database health probe | **No** (Public) | `200 OK` | `503` |
 
 ### Concrete cURL Examples
 
-#### 1. Submit a Job
+#### 1. Dispatch Real Demo Batch (Live Cloud or Local)
 ```bash
-curl -X POST http://localhost:8080/api/jobs \
+# Against Live Cloud:
+curl -X POST https://optiqueue.onrender.com/api/jobs/demo-batch
+
+# Against Localhost:
+curl -X POST http://localhost:8080/api/jobs/demo-batch
+```
+
+#### 2. Submit a Custom Job
+```bash
+curl -X POST https://optiqueue.onrender.com/api/jobs \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: test-api-key" \
+  -H "X-API-Key: optiqueue-portfolio-key-2026" \
   -d '{
     "jobType": "EMAIL_SEND",
     "payload": "{\"to\":\"user@example.com\",\"subject\":\"Welcome to OptiQueue\"}",
@@ -460,10 +472,11 @@ curl -X POST http://localhost:8080/api/jobs \
   }'
 ```
 
-#### 2. Query Real-Time Queue Metrics
+#### 3. Query Real-Time Queue Metrics
 ```bash
-curl -H "X-API-Key: test-api-key" http://localhost:8080/api/jobs/metrics
+curl https://optiqueue.onrender.com/api/jobs/metrics
 ```
+
 *Response*:
 ```json
 {
@@ -599,14 +612,13 @@ Every push to `main` executes [`.github/workflows/ci-cd.yml`](.github/workflows/
 
 ## ☁️ 14. Deployment Guides
 
-### Option A: Render.com (1-Click Blueprint)
-OptiQueue includes a ready-to-deploy [`render.yaml`](render.yaml) blueprint:
-1. Fork or push this repository to your GitHub account.
-2. In [Render.com](https://render.com), navigate to **New +** $\rightarrow$ **Blueprint**.
-3. Select the repository; Render provisions:
-   - Web Service (`optiqueue-app`) using the multi-stage `Dockerfile`.
-   - Free Managed PostgreSQL database (`optiqueue-db`).
-   - Free Managed Redis instance (`optiqueue-redis`).
+### Option A: Verified Zero-Cost Cloud Deployment (Live)
+OptiQueue is actively deployed live on a 100% free, zero-card architecture:
+- **Live URL**: **[https://optiqueue.onrender.com](https://optiqueue.onrender.com)**
+- **Web App**: Render Free Web Service running the multi-stage Docker container.
+- **PostgreSQL**: [Neon.tech](https://neon.tech) Serverless PostgreSQL 16 (0.5 GB durable storage, free forever).
+- **Redis**: [Upstash.com](https://upstash.com) Serverless Redis 8.4 with SSL (10,000 commands/day, free forever).
+- **Total Hosting Cost**: **$0.00 / month** (Guaranteed zero unexpected charges).
 
 ### Option B: Oracle Cloud "Always Free" Ampere ARM VM
 Oracle Cloud provides an Always Free Ampere ARM architecture (4 OCPU, 24 GB RAM):
@@ -712,5 +724,7 @@ optiqueue/
 
 Developed by **Kaushtubham Shukla** as an advanced engineering demonstration of distributed systems reliability, resilient scheduling, and production-grade backend architecture.
 
+- **Live Demo**: [https://optiqueue.onrender.com](https://optiqueue.onrender.com)
+- **Health Check**: [https://optiqueue.onrender.com/actuator/health](https://optiqueue.onrender.com/actuator/health)
 - **GitHub**: [@Kaushtubha](https://github.com/Kaushtubha)
 - **Repository**: [https://github.com/Kaushtubha/optiqueue](https://github.com/Kaushtubha/optiqueue)

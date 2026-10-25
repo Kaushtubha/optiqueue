@@ -9,13 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-main: #070b14;
-      --bg-card: rgba(15, 23, 42, 0.75);
-      --bg-card-hover: rgba(30, 41, 59, 0.75);
+      --bg-main: #060911;
+      --bg-card: rgba(13, 20, 36, 0.75);
+      --bg-card-hover: rgba(22, 33, 58, 0.75);
       --border-card: rgba(255, 255, 255, 0.08);
       --border-card-hover: rgba(56, 189, 248, 0.35);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
+      --text-dim: #64748b;
       --primary: #38bdf8;
       --primary-glow: rgba(56, 189, 248, 0.25);
       --accent: #818cf8;
@@ -39,15 +40,15 @@
       min-height: 100vh;
       overflow-x: hidden;
       background-image: 
-        radial-gradient(circle at 10% 15%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
-        radial-gradient(circle at 90% 25%, rgba(129, 140, 248, 0.08) 0%, transparent 45%),
-        radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+        radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 85% 20%, rgba(129, 140, 248, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.04) 0%, transparent 50%);
     }
 
     .container {
-      max-width: 1440px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 2rem 1.5rem;
+      padding: 1.75rem 1.5rem 3rem 1.5rem;
     }
 
     /* Header */
@@ -55,8 +56,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 2rem;
-      padding-bottom: 1.5rem;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.25rem;
       border-bottom: 1px solid var(--border-card);
       flex-wrap: wrap;
       gap: 1.25rem;
@@ -69,50 +70,50 @@
     }
 
     .brand-icon {
-      width: 48px;
-      height: 48px;
+      width: 46px;
+      height: 46px;
       background: linear-gradient(135deg, #0284c7, #6366f1);
-      border-radius: 14px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.6rem;
-      box-shadow: 0 0 25px var(--primary-glow);
+      font-size: 1.5rem;
+      box-shadow: 0 0 20px var(--primary-glow);
     }
 
     .brand-title {
-      font-size: 1.5rem;
+      font-size: 1.45rem;
       font-weight: 800;
-      letter-spacing: -0.025em;
-      background: linear-gradient(to right, #38bdf8, #a855f7);
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #38bdf8, #c084fc);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .brand-subtitle {
-      font-size: 0.825rem;
+      font-size: 0.8rem;
       color: var(--text-muted);
+      margin-top: 0.15rem;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      margin-top: 0.15rem;
+      gap: 0.4rem;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.65rem;
       flex-wrap: wrap;
     }
 
     .live-status {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
-      font-size: 0.825rem;
+      gap: 0.5rem;
+      font-size: 0.8rem;
       color: var(--text-muted);
       background: rgba(255, 255, 255, 0.03);
-      padding: 0.5rem 0.9rem;
+      padding: 0.45rem 0.85rem;
       border-radius: 9999px;
       border: 1px solid var(--border-card);
     }
@@ -122,7 +123,7 @@
       height: 8px;
       background-color: var(--success);
       border-radius: 50%;
-      box-shadow: 0 0 10px var(--success);
+      box-shadow: 0 0 8px var(--success);
       animation: pulse 2s infinite;
     }
 
@@ -135,11 +136,11 @@
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.6rem 1.15rem;
-      border-radius: 9px;
+      gap: 0.45rem;
+      padding: 0.55rem 1.05rem;
+      border-radius: 8px;
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.825rem;
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       border: 1px solid transparent;
@@ -150,29 +151,23 @@
     .btn-demo {
       background: linear-gradient(135deg, #059669, #0284c7);
       color: #fff;
-      box-shadow: 0 4px 15px rgba(5, 150, 105, 0.35);
-      animation: glow-pulse 3s infinite;
+      box-shadow: 0 3px 12px rgba(5, 150, 105, 0.35);
     }
 
     .btn-demo:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 22px rgba(5, 150, 105, 0.55);
-    }
-
-    @keyframes glow-pulse {
-      0%, 100% { box-shadow: 0 0 12px rgba(5, 150, 105, 0.3); }
-      50% { box-shadow: 0 0 22px rgba(2, 132, 199, 0.55); }
+      box-shadow: 0 6px 18px rgba(5, 150, 105, 0.5);
     }
 
     .btn-primary {
       background: linear-gradient(135deg, #0284c7, #6366f1);
       color: #fff;
-      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+      box-shadow: 0 3px 12px rgba(2, 132, 199, 0.3);
     }
 
     .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 18px rgba(2, 132, 199, 0.45);
+      box-shadow: 0 5px 16px rgba(2, 132, 199, 0.45);
     }
 
     .btn-secondary {
@@ -187,7 +182,7 @@
     }
 
     .btn-danger-sm {
-      padding: 0.3rem 0.65rem;
+      padding: 0.28rem 0.6rem;
       font-size: 0.75rem;
       background: rgba(244, 63, 94, 0.15);
       color: #fda4af;
@@ -199,7 +194,7 @@
     }
 
     .btn-success-sm {
-      padding: 0.3rem 0.65rem;
+      padding: 0.28rem 0.65rem;
       font-size: 0.75rem;
       background: rgba(16, 185, 129, 0.15);
       color: #6ee7b7;
@@ -210,28 +205,79 @@
       background: rgba(16, 185, 129, 0.3);
     }
 
+    /* Architecture Explainer Strip */
+    .arch-banner {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .arch-step {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s;
+    }
+
+    .arch-step:hover {
+      border-color: var(--border-card-hover);
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .step-desc {
+      font-size: 0.775rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
     /* KPI Grid */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 1.25rem;
-      margin-bottom: 2rem;
+      gap: 1.15rem;
+      margin-bottom: 1.75rem;
     }
 
     .kpi-card {
       background: var(--bg-card);
       backdrop-filter: blur(14px);
       border: 1px solid var(--border-card);
-      border-radius: 16px;
-      padding: 1.35rem 1.5rem;
-      transition: all 0.25s ease;
+      border-radius: 14px;
+      padding: 1.25rem 1.35rem;
+      transition: all 0.2s ease;
       position: relative;
       overflow: hidden;
     }
 
     .kpi-card:hover {
       border-color: var(--border-card-hover);
-      transform: translateY(-3px);
+      transform: translateY(-2px);
       background: var(--bg-card-hover);
     }
 
@@ -255,20 +301,20 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
     }
 
     .kpi-label {
-      font-size: 0.75rem;
+      font-size: 0.725rem;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
     }
 
     .kpi-badge {
-      font-size: 0.7rem;
-      padding: 0.15rem 0.5rem;
+      font-size: 0.675rem;
+      padding: 0.15rem 0.45rem;
       border-radius: 9999px;
       font-weight: 500;
       background: rgba(255, 255, 255, 0.05);
@@ -276,18 +322,18 @@
     }
 
     .kpi-value {
-      font-size: 2.25rem;
+      font-size: 2.1rem;
       font-weight: 800;
       letter-spacing: -0.03em;
       line-height: 1.1;
     }
 
-    /* Main Table Container */
+    /* Table Container */
     .tabs-container {
       background: var(--bg-card);
       backdrop-filter: blur(14px);
       border: 1px solid var(--border-card);
-      border-radius: 18px;
+      border-radius: 16px;
       overflow: hidden;
     }
 
@@ -295,7 +341,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1rem 1.5rem;
+      padding: 0.9rem 1.35rem;
       border-bottom: 1px solid var(--border-card);
       flex-wrap: wrap;
       gap: 1rem;
@@ -312,9 +358,9 @@
       border: 1px solid transparent;
       color: var(--text-muted);
       font-weight: 600;
-      font-size: 0.85rem;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
+      font-size: 0.825rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 7px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
@@ -327,7 +373,7 @@
     .tab-btn.active {
       color: var(--primary);
       background: rgba(56, 189, 248, 0.1);
-      border-color: rgba(56, 189, 248, 0.3);
+      border-color: rgba(56, 189, 248, 0.25);
     }
 
     .filter-search {
@@ -336,7 +382,7 @@
       background: rgba(0, 0, 0, 0.35);
       border: 1px solid var(--border-card);
       border-radius: 8px;
-      padding: 0.35rem 0.8rem;
+      padding: 0.35rem 0.75rem;
       gap: 0.5rem;
     }
 
@@ -345,8 +391,8 @@
       border: none;
       outline: none;
       color: var(--text-main);
-      font-size: 0.825rem;
-      width: 180px;
+      font-size: 0.8rem;
+      width: 190px;
       font-family: var(--font-sans);
     }
 
@@ -359,14 +405,14 @@
       width: 100%;
       border-collapse: collapse;
       text-align: left;
-      font-size: 0.875rem;
+      font-size: 0.85rem;
     }
 
     th {
-      padding: 0.9rem 1.25rem;
+      padding: 0.85rem 1.15rem;
       color: var(--text-muted);
       font-weight: 600;
-      font-size: 0.75rem;
+      font-size: 0.725rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       border-bottom: 1px solid var(--border-card);
@@ -374,7 +420,7 @@
     }
 
     td {
-      padding: 1rem 1.25rem;
+      padding: 0.9rem 1.15rem;
       border-bottom: 1px solid var(--border-card);
       color: var(--text-main);
     }
@@ -391,9 +437,9 @@
     /* Badges */
     .code-pill {
       font-family: var(--font-mono);
-      font-size: 0.775rem;
+      font-size: 0.75rem;
       background: rgba(255, 255, 255, 0.05);
-      padding: 0.2rem 0.55rem;
+      padding: 0.2rem 0.5rem;
       border-radius: 6px;
       border: 1px solid var(--border-card);
       color: #bae6fd;
@@ -401,10 +447,10 @@
 
     .priority-pill {
       font-family: var(--font-mono);
-      font-size: 0.75rem;
+      font-size: 0.725rem;
       font-weight: 600;
-      padding: 0.2rem 0.5rem;
-      border-radius: 6px;
+      padding: 0.18rem 0.45rem;
+      border-radius: 5px;
     }
     .p-1 { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.3); }
     .p-2 { background: rgba(245, 158, 11, 0.15); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.3); }
@@ -415,10 +461,10 @@
     .status-badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.25rem 0.7rem;
+      gap: 0.35rem;
+      padding: 0.22rem 0.65rem;
       border-radius: 9999px;
-      font-size: 0.75rem;
+      font-size: 0.725rem;
       font-weight: 600;
       letter-spacing: 0.02em;
     }
@@ -428,7 +474,7 @@
     .status-PENDING { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
     .status-FAILED { background: rgba(244, 63, 94, 0.15); color: #f87171; border: 1px solid rgba(244, 63, 94, 0.3); }
     .status-RETRYING { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
-    .status-DEAD_LETTER { background: rgba(244, 63, 94, 0.25); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.5); box-shadow: 0 0 10px rgba(244, 63, 94, 0.3); }
+    .status-DEAD_LETTER { background: rgba(244, 63, 94, 0.25); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.5); }
     .status-CANCELLED { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
 
     /* Modals */
@@ -452,74 +498,75 @@
     }
 
     .modal {
-      background: #0d1527;
-      border: 1px solid var(--border-card);
-      border-radius: 18px;
+      background: #0b1222;
+      border: 1px solid var(--border-card-hover);
+      border-radius: 16px;
       width: 100%;
       max-width: 580px;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
-      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
       animation: modalScale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
     }
 
     @keyframes modalScale {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
     }
 
     .modal-header {
-      padding: 1.25rem 1.5rem;
+      padding: 1.15rem 1.5rem;
       border-bottom: 1px solid var(--border-card);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(255, 255, 255, 0.015);
     }
 
     .modal-title {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 700;
+      color: var(--text-main);
     }
 
     .modal-close {
       background: transparent;
       border: none;
       color: var(--text-muted);
-      font-size: 1.4rem;
+      font-size: 1.35rem;
       cursor: pointer;
       line-height: 1;
-      transition: color 0.15s;
+      padding: 0.2rem;
     }
+
     .modal-close:hover {
-      color: #fff;
+      color: var(--text-main);
     }
 
     .modal-body {
-      padding: 1.5rem;
-      max-height: 70vh;
+      padding: 1.35rem 1.5rem;
+      max-height: 75vh;
       overflow-y: auto;
     }
 
     .form-group {
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.15rem;
     }
 
     .form-label {
       display: block;
-      font-size: 0.825rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: var(--text-muted);
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.35rem;
     }
 
     .form-control {
       width: 100%;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.45);
       border: 1px solid var(--border-card);
       color: var(--text-main);
-      padding: 0.7rem 0.9rem;
+      padding: 0.65rem 0.85rem;
       border-radius: 8px;
-      font-size: 0.9rem;
+      font-size: 0.875rem;
       outline: none;
       transition: border-color 0.2s;
       font-family: var(--font-sans);
@@ -531,13 +578,13 @@
 
     textarea.form-control {
       font-family: var(--font-mono);
-      font-size: 0.8rem;
-      min-height: 120px;
+      font-size: 0.775rem;
+      min-height: 110px;
       resize: vertical;
     }
 
     .modal-footer {
-      padding: 1rem 1.5rem;
+      padding: 0.9rem 1.5rem;
       background: rgba(0, 0, 0, 0.25);
       border-top: 1px solid var(--border-card);
       display: flex;
@@ -549,9 +596,9 @@
       background: rgba(0, 0, 0, 0.5);
       border: 1px solid var(--border-card);
       border-radius: 8px;
-      padding: 0.85rem 1rem;
+      padding: 0.8rem 1rem;
       font-family: var(--font-mono);
-      font-size: 0.8rem;
+      font-size: 0.775rem;
       color: #38bdf8;
       overflow-x: auto;
       white-space: pre-wrap;
@@ -563,24 +610,44 @@
       position: fixed;
       bottom: 2rem;
       right: 2rem;
-      background: #0f172a;
+      background: #0b1222;
       border: 1px solid var(--primary);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-      padding: 0.9rem 1.4rem;
+      padding: 0.85rem 1.35rem;
       border-radius: 10px;
-      font-size: 0.9rem;
+      font-size: 0.875rem;
       z-index: 10000;
       display: none;
       align-items: center;
-      gap: 0.6rem;
+      gap: 0.5rem;
       color: #fff;
-      animation: modalScale 0.2s ease-out;
     }
 
     .empty-state {
       text-align: center;
       padding: 3.5rem 1rem;
       color: var(--text-muted);
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -592,7 +659,7 @@
       <div class="brand">
         <div class="brand-icon">⚡</div>
         <div>
-          <div class="brand-title">OptiQueue Engine</div>
+          <div class="brand-title">OptiQueue</div>
           <div class="brand-subtitle">
             <span>Distributed Earliest Deadline First (EDF) Task Scheduler</span>
           </div>
@@ -601,14 +668,38 @@
       <div class="header-actions">
         <div class="live-status">
           <div class="pulse-dot"></div>
-          <span id="conn-status">Cluster Live • Neon Postgres + Upstash Redis</span>
+          <span id="conn-status">Cluster Active • Neon Postgres + Upstash Redis</span>
         </div>
-        <button class="btn btn-demo" id="btn-demo" onclick="triggerDemoBatch()">⚡ Launch Demo Workload</button>
-        <button class="btn btn-primary" onclick="openSubmitModal()">+ Submit Job</button>
-        <button class="btn btn-secondary" onclick="openKeyModal()">⚙️ Key</button>
-        <button class="btn btn-secondary" onclick="fetchData()">↻</button>
+        <button class="btn btn-demo" id="btn-demo" onclick="triggerDemoBatch()">⚡ Run Live Simulation (10 Tasks)</button>
+        <button class="btn btn-primary" onclick="openSubmitModal()">+ New Task</button>
+        <button class="btn btn-secondary" onclick="fetchData()" title="Refresh Telemetry">↻</button>
       </div>
     </header>
+
+    <!-- Architecture Explainer Strip -->
+    <div class="arch-banner">
+      <div class="arch-step">
+        <div class="step-number">1</div>
+        <div>
+          <div class="step-title">Ingest & EDF Min-Heap</div>
+          <div class="step-desc">Tasks pass through unique idempotency keys and are placed into an in-memory priority queue ordered by closest SLA deadline.</div>
+        </div>
+      </div>
+      <div class="arch-step">
+        <div class="step-number">2</div>
+        <div>
+          <div class="step-title">Redis Distributed Lock</div>
+          <div class="step-desc">Worker threads acquire mutual exclusion locks (30s TTL lease) via atomic Lua scripts to prevent concurrent double-processing.</div>
+        </div>
+      </div>
+      <div class="arch-step">
+        <div class="step-number">3</div>
+        <div>
+          <div class="step-title">Postgres Ledger & DLQ</div>
+          <div class="step-desc">All executions persist in PostgreSQL with optimistic locking. Failed tasks retry with jitter; exhausted jobs quarantine into DLQ.</div>
+        </div>
+      </div>
+    </div>
 
     <!-- KPI Metric Cards -->
     <div class="kpi-grid">
@@ -658,7 +749,7 @@
         </div>
         <div class="filter-search">
           <span style="color:var(--text-muted);font-size:0.8rem;">🔍</span>
-          <input type="text" id="table-search" placeholder="Filter jobs..." oninput="onSearchInput()">
+          <input type="text" id="table-search" placeholder="Filter tasks..." oninput="onSearchInput()">
         </div>
       </div>
 
@@ -684,29 +775,41 @@
         </table>
       </div>
     </div>
+
+    <!-- Footer -->
+    <footer>
+      <div>
+        <span>OptiQueue Distributed Task Engine &bull; Zero-Cost Cloud Architecture on Render, Neon & Upstash</span>
+      </div>
+      <div style="display:flex;gap:1.25rem;">
+        <a href="https://github.com/Kaushtubha/optiqueue" target="_blank">⭐ GitHub Repository</a>
+        <a href="/actuator/health" target="_blank">Health Check</a>
+        <a href="#" onclick="openKeyModal(); return false;">API Key Settings</a>
+      </div>
+    </footer>
   </div>
 
   <!-- Submit Job Modal -->
   <div class="modal-backdrop" id="submit-modal">
     <div class="modal">
       <div class="modal-header">
-        <div class="modal-title">Submit Distributed Task</div>
+        <div class="modal-title">Submit New Task</div>
         <button class="modal-close" onclick="closeAllModals()">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
           <label class="form-label">Job Handler Type</label>
           <select class="form-control" id="form-job-type" onchange="onJobTypeChange()">
-            <option value="EMAIL_SEND">EMAIL_SEND (Transactional Email)</option>
-            <option value="WEBHOOK_DISPATCH">WEBHOOK_DISPATCH (HTTP Webhook Call)</option>
-            <option value="REPORT_GEN">REPORT_GEN (Async Financial Aggregation)</option>
-            <option value="CUSTOM">CUSTOM (Generic Execution)</option>
+            <option value="EMAIL_SEND">EMAIL_SEND (Transactional Email Dispatch)</option>
+            <option value="WEBHOOK_DISPATCH">WEBHOOK_DISPATCH (HTTP Webhook Notification)</option>
+            <option value="REPORT_GEN">REPORT_GEN (Async Financial Report Processing)</option>
+            <option value="CUSTOM">CUSTOM (Generic Payload Task)</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Priority (1 = Highest / Critical, 5 = Normal)</label>
-          <input type="number" class="form-control" id="form-priority" min="1" max="10" value="3">
+          <label class="form-label">Priority (1 = Highest / Critical SLA, 5 = Background)</label>
+          <input type="number" class="form-control" id="form-priority" min="1" max="5" value="3">
         </div>
 
         <div class="form-group">
@@ -721,7 +824,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeAllModals()">Cancel</button>
-        <button class="btn btn-primary" onclick="submitJob()">Submit Task</button>
+        <button class="btn btn-primary" onclick="submitJob()">Enqueue Task</button>
       </div>
     </div>
   </div>
@@ -730,7 +833,7 @@
   <div class="modal-backdrop" id="inspect-modal">
     <div class="modal" style="max-width: 680px;">
       <div class="modal-header">
-        <div class="modal-title">Job Inspector & Output</div>
+        <div class="modal-title">Task Telemetry & Execution Output</div>
         <button class="modal-close" onclick="closeAllModals()">&times;</button>
       </div>
       <div class="modal-body" id="inspect-body">
@@ -742,16 +845,16 @@
     </div>
   </div>
 
-  <!-- API Key Modal -->
+  <!-- API Key Modal (Discreet) -->
   <div class="modal-backdrop" id="key-modal">
-    <div class="modal">
+    <div class="modal" style="max-width:480px;">
       <div class="modal-header">
         <div class="modal-title">API Authentication Settings</div>
         <button class="modal-close" onclick="closeAllModals()">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem;">
-          Write operations sent to <code>/api/**</code> carry the authorized <code>X-API-Key</code> header.
+        <p style="color:var(--text-muted);font-size:0.825rem;margin-bottom:1rem;line-height:1.4;">
+          The dashboard automatically uses the authorized default portfolio API key. You can customize it below if needed.
         </p>
         <div class="form-group">
           <label class="form-label">Active API Key</label>
@@ -860,12 +963,12 @@
         });
 
         if (res.ok) {
-          showToast('Dispatched 10 real distributed tasks to workers!');
+          showToast('Dispatched 10 distributed tasks! Watch telemetry update in real time.');
           let cycles = 0;
           const fastPoll = setInterval(() => {
             fetchData();
             cycles++;
-            if (cycles > 10) clearInterval(fastPoll);
+            if (cycles > 12) clearInterval(fastPoll);
           }, 600);
         } else {
           alert('Demo batch submission failed: ' + (await res.text()));
@@ -874,7 +977,7 @@
         alert('Network error: ' + err.message);
       } finally {
         btn.disabled = false;
-        btn.innerText = '⚡ Launch Demo Workload';
+        btn.innerText = '⚡ Run Live Simulation (10 Tasks)';
       }
     }
 
@@ -971,12 +1074,12 @@
       body.innerHTML = `
         <div style="margin-bottom:1.25rem;display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div style="font-size:0.75rem;color:var(--text-muted);letter-spacing:0.05em;">JOB IDENTIFIER</div>
-            <div style="font-family:var(--font-mono);font-size:0.95rem;font-weight:700;color:#38bdf8;">${job.id}</div>
+            <div style="font-size:0.725rem;color:var(--text-muted);letter-spacing:0.05em;">JOB IDENTIFIER</div>
+            <div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:700;color:#38bdf8;">${job.id}</div>
           </div>
           <span class="status-badge status-${job.status}">${job.status}</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;background:rgba(255,255,255,0.02);padding:1rem;border-radius:10px;border:1px solid var(--border-card);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;background:rgba(255,255,255,0.02);padding:0.9rem;border-radius:10px;border:1px solid var(--border-card);">
           <div><span style="color:var(--text-muted);font-size:0.8rem;">Handler:</span> <strong>${job.jobType}</strong></div>
           <div><span style="color:var(--text-muted);font-size:0.8rem;">Priority:</span> <span class="priority-pill p-${Math.min(job.priority, 5)}">P${job.priority}</span></div>
           <div><span style="color:var(--text-muted);font-size:0.8rem;">Worker ID:</span> <code>${job.assignedWorkerId || 'unassigned'}</code></div>
@@ -987,7 +1090,7 @@
           <div class="json-box">${payloadFormatted}</div>
         </div>
         <div class="form-group">
-          <label class="form-label">${job.status === 'FAILED' || job.status === 'DEAD_LETTER' ? 'Error Diagnostic' : 'Execution Output Result (PostgreSQL)'}</label>
+          <label class="form-label">${job.status === 'FAILED' || job.status === 'DEAD_LETTER' ? 'Error Diagnostic' : 'Execution Output (PostgreSQL ACID Ledger)'}</label>
           <div class="json-box" style="color:${job.lastError ? '#f87171' : '#34d399'};">${job.lastError ? job.lastError : resultFormatted}</div>
         </div>
       `;
@@ -1013,7 +1116,7 @@
         });
         if (res.ok) {
           closeAllModals();
-          showToast('Job submitted successfully!');
+          showToast('Job submitted to cluster successfully!');
           fetchData();
         } else {
           alert('Submit failed: ' + (await res.text()));
@@ -1044,7 +1147,7 @@
           headers: { 'X-API-Key': getApiKey() }
         });
         if (res.ok) {
-          showToast('Dead letter job re-queued');
+          showToast('Dead letter job re-queued for execution');
           fetchData();
         } else {
           alert('Replay failed: ' + (await res.text()));

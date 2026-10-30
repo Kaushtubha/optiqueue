@@ -15,6 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Coordinates periodic polling of pending jobs from PostgreSQL and dispatches them into the worker pool.
+ * Uses distributed locking in Redis to ensure single-leader scheduling across multi-node clusters.
+ */
 @Service
 public class SchedulerService {
 
@@ -25,6 +29,14 @@ public class SchedulerService {
     private final OptiQueueProperties   props;
     private final DistributedLockService lockService;
 
+    /**
+     * Constructs a new SchedulerService with required repositories, worker pools, and distributed coordination.
+     *
+     * @param jobRepository the persistent job storage repository
+     * @param workerPool the execution pool running dispatched background jobs
+     * @param props application configuration properties
+     * @param lockService distributed lock coordinator backed by Redis
+     */
     public SchedulerService(JobRepository jobRepository, WorkerPool workerPool, OptiQueueProperties props, DistributedLockService lockService) {
         this.jobRepository = jobRepository;
         this.workerPool = workerPool;

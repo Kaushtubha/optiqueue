@@ -97,6 +97,12 @@ public class Job {
         this.updatedAt = Instant.now();
     }
 
+    /**
+     * Transitions the job to a new lifecycle status according to the valid state machine transitions.
+     *
+     * @param newStatus target {@link JobStatus} to transition into
+     * @throws IllegalStateException if the requested status transition is not permitted
+     */
     public void transitionTo(JobStatus newStatus) {
         if (!JobStatus.isValidTransition(this.status, newStatus)) {
             throw new IllegalStateException(
@@ -107,22 +113,46 @@ public class Job {
         this.status = newStatus;
     }
 
+    /**
+     * Marks the job as claimed by an assigned worker thread, recording assignment timestamp and status.
+     *
+     * @param workerId identifier of the worker thread or node claiming this job
+     */
     public void claimBy(String workerId) {
         transitionTo(JobStatus.IN_PROGRESS);
         this.assignedWorkerId = workerId;
         this.startedAt = Instant.now();
     }
 
+    /**
+     * Completes the job successfully, recording the output result payload and completion timestamp.
+     *
+     * @param result output result or telemetry returned by the job handler execution
+     */
     public void complete(String result) {
         transitionTo(JobStatus.COMPLETED);
         this.result = result;
         this.completedAt = Instant.now();
     }
 
+    /**
+     * Records an execution failure without jitter, calculating exponential backoff interval.
+     *
+     * @param errorMessage diagnostic error description or exception message
+     * @param initialDelayMs base backoff delay in milliseconds
+     */
     public void recordFailure(String errorMessage, long initialDelayMs) {
         recordFailure(errorMessage, initialDelayMs, false);
     }
 
+    /**
+     * Records an execution failure, incrementing attempt counter and calculating next retry timestamp.
+     * If attempts exceed {@code maxRetries}, moves the job to dead-letter state.
+     *
+     * @param errorMessage diagnostic error description or exception message
+     * @param initialDelayMs base backoff delay in milliseconds
+     * @param useJitter whether to introduce full/equal jitter to avoid thundering herds
+     */
     public void recordFailure(String errorMessage, long initialDelayMs, boolean useJitter) {
         this.lastError = errorMessage;
         this.retryCount++;

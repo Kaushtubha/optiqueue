@@ -8,6 +8,12 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Distributed lease and mutual-exclusion coordinator backed by Redis.
+ * <p>
+ * Ensures that multi-node cluster deployments coordinate scheduler cycles without concurrent execution races.
+ * Employs atomic SETNX leases with auto-expiring TTLs and Lua script release verification.
+ */
 @Component
 public class DistributedLockService {
 
@@ -15,6 +21,11 @@ public class DistributedLockService {
 
     private final StringRedisTemplate redisTemplate;
 
+    /**
+     * Constructs a new DistributedLockService with the underlying Redis template.
+     *
+     * @param redisTemplate template used for distributed lock key operations
+     */
     public DistributedLockService(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }

@@ -8,6 +8,12 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Distributed rate limiter backed by Redis.
+ * <p>
+ * Uses an atomic Redis Lua script to maintain per-client request counts inside bounded time windows.
+ * Implements a fail-open strategy so that transient Redis outages do not disrupt core API availability.
+ */
 @Component
 public class RedisRateLimiter {
 
@@ -15,6 +21,11 @@ public class RedisRateLimiter {
 
     private final StringRedisTemplate redisTemplate;
 
+    /**
+     * Constructs a RedisRateLimiter instance with the configured Redis template.
+     *
+     * @param redisTemplate template used for executing atomic Redis commands and Lua scripts
+     */
     public RedisRateLimiter(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }

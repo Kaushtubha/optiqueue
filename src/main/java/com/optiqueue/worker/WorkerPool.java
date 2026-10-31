@@ -14,6 +14,13 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Thread pool execution engine managing background worker threads in OptiQueue.
+ * <p>
+ * Consumes jobs from the bounded {@link JobBlockingQueue}, stamps ownership with an instance workerId,
+ * delegates execution to matching {@link com.optiqueue.worker.handler.JobHandler} instances,
+ * and handles completion status transitions or failure retry scheduling.
+ */
 @Component
 public class WorkerPool {
 
@@ -47,6 +54,14 @@ public class WorkerPool {
 
     // ── CONSTRUCTOR ───────────────────────────────────────────────────────
 
+    /**
+     * Initializes the WorkerPool, sets worker identifier, and starts consumer worker threads.
+     *
+     * @param blockingQueue internal buffer transferring dispatched jobs from scheduler to workers
+     * @param jobRepository persistent job storage repository
+     * @param props application configuration properties
+     * @param handlerRegistry polymorphic registry mapping job types to execution handlers
+     */
     public WorkerPool(JobBlockingQueue blockingQueue,
                       JobRepository jobRepository,
                       OptiQueueProperties props,

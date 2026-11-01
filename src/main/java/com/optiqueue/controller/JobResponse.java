@@ -32,6 +32,11 @@ public class JobResponse {
     public JobResponse() {
     }
 
+    /**
+     * Creates a new fluent {@link Builder} instance.
+     *
+     * @return a new JobResponse builder
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -113,6 +118,12 @@ public class JobResponse {
         }
     }
 
+    /**
+     * Factory method mapping an internal domain {@link Job} entity to an outbound API {@link JobResponse} DTO.
+     *
+     * @param job domain entity to convert
+     * @return populated JobResponse DTO
+     */
     public static JobResponse from(Job job) {
         return JobResponse.builder()
             .id(job.getId())

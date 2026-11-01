@@ -9,6 +9,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Liveness and heartbeat service backed by Redis.
+ * <p>
+ * Active worker nodes periodically record their existence with auto-expiring TTLs.
+ * Used by cluster failover detectors to identify crashed or partitioned worker nodes.
+ */
 @Component
 public class HeartbeatService {
 
@@ -17,6 +23,12 @@ public class HeartbeatService {
     private final StringRedisTemplate redisTemplate;
     private final OptiQueueProperties props;
 
+    /**
+     * Constructs a HeartbeatService instance with Redis template and properties.
+     *
+     * @param redisTemplate template used for Redis heartbeat key writes and reads
+     * @param props application configuration properties containing heartbeat interval and TTL
+     */
     public HeartbeatService(StringRedisTemplate redisTemplate, OptiQueueProperties props) {
         this.redisTemplate = redisTemplate;
         this.props = props;

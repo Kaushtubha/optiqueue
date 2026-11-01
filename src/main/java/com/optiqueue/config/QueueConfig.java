@@ -28,6 +28,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class QueueConfig {
 
+    /**
+     * Instantiates the shared singleton bounded JobBlockingQueue bean configured with capacity properties.
+     *
+     * @param props application configuration properties
+     * @return the singleton JobBlockingQueue instance
+     */
     @Bean
     public JobBlockingQueue jobBlockingQueue(OptiQueueProperties props) {
         int capacity = props.getWorker().getQueueCapacity();

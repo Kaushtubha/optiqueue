@@ -14,6 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Automated failover detector for in-flight tasks in OptiQueue.
+ * <p>
+ * Scans PostgreSQL for jobs in {@link JobStatus#IN_PROGRESS} state and verifies whether
+ * the assigned worker node has an active heartbeat in Redis.
+ * If the worker heartbeat has expired, the job is reclaimed and returned to {@link JobStatus#PENDING}.
+ */
 @Component
 public class FailoverDetector {
 
@@ -23,6 +30,13 @@ public class FailoverDetector {
     private final HeartbeatService    heartbeatService;
     private final OptiQueueProperties props;
 
+    /**
+     * Constructs a FailoverDetector with required job repository and heartbeat services.
+     *
+     * @param jobRepository the persistent job storage repository
+     * @param heartbeatService service checking Redis worker heartbeat keys
+     * @param props application configuration properties
+     */
     public FailoverDetector(JobRepository jobRepository, HeartbeatService heartbeatService, OptiQueueProperties props) {
         this.jobRepository = jobRepository;
         this.heartbeatService = heartbeatService;

@@ -26,9 +26,20 @@ public class JobRequest {
     @Max(value = 20, message = "maxRetries cannot exceed 20")
     private Integer maxRetries;
 
+    /** Default constructor for JSON deserialization */
     public JobRequest() {
     }
 
+    /**
+     * Parameterized constructor for programmatic job creation.
+     *
+     * @param idempotencyKey unique deduplication token
+     * @param jobType task category matching a registered handler
+     * @param payload stringified input arguments
+     * @param priority static priority level (1=highest, 10=lowest)
+     * @param deadlineEpochMs soft deadline timestamp in epoch milliseconds
+     * @param maxRetries retry attempt threshold before dead-letter routing
+     */
     public JobRequest(String idempotencyKey, String jobType, String payload, int priority, Long deadlineEpochMs, Integer maxRetries) {
         this.idempotencyKey = idempotencyKey;
         this.jobType = jobType;

@@ -19,6 +19,12 @@ public class JobHandlerRegistry {
     private final Map<String, JobHandler> handlers = new HashMap<>();
     private final JobHandler defaultHandler;
 
+    /**
+     * Constructs the registry, collecting and registering all discovered {@link JobHandler} beans.
+     *
+     * @param handlerList list of all Spring components implementing {@link JobHandler}
+     * @param defaultHandler fallback handler invoked when no explicit type match is found
+     */
     public JobHandlerRegistry(List<JobHandler> handlerList, DefaultJobHandler defaultHandler) {
         this.defaultHandler = defaultHandler;
         for (JobHandler handler : handlerList) {
@@ -30,7 +36,10 @@ public class JobHandlerRegistry {
     }
 
     /**
-     * Finds the matching handler for a given job type, falling back to DefaultJobHandler.
+     * Finds the matching handler for a given job type, falling back to DefaultJobHandler if unmatched.
+     *
+     * @param jobType the string identifier of the task (case-insensitive)
+     * @return the resolved {@link JobHandler} instance
      */
     public JobHandler getHandler(String jobType) {
         if (jobType == null) {

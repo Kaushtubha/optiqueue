@@ -107,11 +107,23 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
+    /**
+     * Verifies whether the provided client key matches any configured valid key.
+     *
+     * @param key the raw API key token extracted from the X-API-Key request header
+     * @return true if the key matches a valid credential
+     */
     private boolean isValidKey(String key) {
         Set<String> validKeys = Set.of(apiKeysConfig.split(","));
         return validKeys.contains(key.strip());
     }
 
+    /**
+     * Determines whether the specified request path is exempted from authentication checks.
+     *
+     * @param path request URI path
+     * @return true if the path is whitelisted (e.g. actuator health probes)
+     */
     private boolean isExcluded(String path) {
         return EXCLUDED_PATHS.stream().anyMatch(path::startsWith);
     }

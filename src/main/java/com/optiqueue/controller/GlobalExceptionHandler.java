@@ -15,6 +15,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Global exception interceptor and REST error translation advice.
+ * <p>
+ * Catches validation errors, database integrity conflicts (e.g. idempotency races),
+ * illegal state machine transitions, and unhandled runtime exceptions, mapping each to RFC-7807 compliant JSON payloads.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

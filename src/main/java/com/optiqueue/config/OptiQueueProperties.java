@@ -38,6 +38,9 @@ public class OptiQueueProperties {
         this.heartbeat = heartbeat;
     }
 
+    /**
+     * Configuration settings for worker thread pools and internal buffering queues.
+     */
     public static class Worker {
         private int poolSize = 4;
         private int queueCapacity = 100;
@@ -59,6 +62,9 @@ public class OptiQueueProperties {
         }
     }
 
+    /**
+     * Configuration settings for exponential retry scheduling and backoff delays.
+     */
     public static class Retry {
         private int maxAttempts = 5;
         private long initialDelayMs = 1000;
@@ -80,6 +86,9 @@ public class OptiQueueProperties {
         }
     }
 
+    /**
+     * Configuration settings for worker heartbeat reporting and liveness TTLs.
+     */
     public static class Heartbeat {
         private long intervalMs = 5000;
         private long ttlMs = 15000;

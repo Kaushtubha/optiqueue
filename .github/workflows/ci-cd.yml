@@ -172,7 +172,7 @@ jobs:
 
       - name: Deploy via SSH
         if: steps.check-creds.outputs.skip != 'true'
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.ORACLE_VM_IP }}
           username: ${{ secrets.ORACLE_VM_USER }}

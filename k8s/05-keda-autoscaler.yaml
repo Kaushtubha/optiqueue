@@ -1,0 +1,38 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: optiqueue-autoscaler
+  namespace: optiqueue
+  labels:
+    app.kubernetes.io/name: optiqueue
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: optiqueue
+  minReplicaCount: 2
+  maxReplicaCount: 15
+  cooldownPeriod: 300
+  pollingInterval: 15
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 10
+              periodSeconds: 60
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local:9090
+        metricName: optiqueue_pending_jobs
+        query: sum(optiqueue_jobs_total{status="PENDING"})
+        threshold: '50'

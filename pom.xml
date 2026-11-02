@@ -29,7 +29,7 @@
     <java.version>21</java.version>
     <lombok.version>1.18.36</lombok.version>
     <!-- Testcontainers: spin up real Postgres/Redis in unit tests -->
-    <testcontainers.version>1.19.7</testcontainers.version>
+    <testcontainers.version>1.21.4</testcontainers.version>
   </properties>
 
   <dependencies>
